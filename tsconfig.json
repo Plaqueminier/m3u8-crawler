@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "es2022", // Use 'es2023' to target the latest supported ECMAScript version
+    "module": "commonjs", // CommonJS module system for Node.js compatibility
+    "strict": true, // Enable all strict type-checking options
+    "esModuleInterop": true, // Emit additional JS for CommonJS and ES Modules interoperability
+    "skipLibCheck": true, // Skip type checking of all declaration files
+    "outDir": "./dist", // Redirect output structure to the dist directory
+    "moduleResolution": "node", // Use Node.js style module resolution
+    "forceConsistentCasingInFileNames": true // Ensure that casing is consistent
+  },
+  "include": ["src"], // Include all TypeScript files in the src directory
+  "exclude": ["node_modules"] // Exclude the node_modules directory
+}
