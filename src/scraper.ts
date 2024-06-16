@@ -25,12 +25,6 @@ const getViewersCount = async (page: Page, person: string): Promise<number> => {
   return 0;
 };
 
-interface LoggedIn {
-  username: string;
-  rank: number;
-  viewers: number;
-}
-
 export const scrapAndFindPerson = async (page: Page, index: number): Promise<string | undefined> => {
   const url = ``;
   // Go to the desired webpage

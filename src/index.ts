@@ -93,6 +93,7 @@ class Crawler {
     eventEmitter.on("keyPress", (key) => {
       if (key === "q") {
         this.SHOULD_STOP = true;
+        console.log("Exiting after 5 minutes maximum...");
       }
     });
 
@@ -135,58 +136,66 @@ class Crawler {
       .help()
       .alias("help", "h").argv;
 
-    // Launch the browser
-    const browser: Browser = await puppeteer.launch({
-      defaultViewport: { width: 1920, height: 1080 },
-    });
-    // Open a new page
-    const page: Page = await browser.newPage();
+    while (true) {
+      // Launch the browser
+      const browser: Browser = await puppeteer.launch({
+        defaultViewport: { width: 1920, height: 1080 },
+      });
+      // Open a new page
+      const page: Page = await browser.newPage();
 
-    const outputFileName = argv.name
-      ? argv.name
-      : await scrapAndFindPerson(page, argv.index);
+      let outputFileName = argv.name
+        ? argv.name
+        : await scrapAndFindPerson(page, argv.index);
 
-    if (!outputFileName) {
-      console.error("No username found");
-      await browser.close();
-      return;
-    }
-    const inputDirectory = `${outputFileName}-${formatDate(new Date())}`;
-
-    await page.setRequestInterception(true);
-
-    const fileNumbers: Set<number> = new Set();
-
-    // Event listener for intercepted requests
-    page.on("request", async (request) => {
-      this.onRequest(request, fileNumbers, inputDirectory);
-    });
-
-    this.interactions();
-
-    const url = `${outputFileName}/`;
-    // Go to the desired webpage
-    await page.goto(url);
-    console.log(`Page ${url} loaded successfully`);
-
-    if (argv.minutes) {
-      await setTimeout(60_000 * Number(argv.minutes));
-    } else {
-      while (this.HAD_NEW_REQUEST && !this.SHOULD_STOP) {
-        console.log("Waiting for new requests...");
-        this.HAD_NEW_REQUEST = false;
-        await setTimeout(60_000 * 5);
+      while (!outputFileName) {
+        console.log("No username found, retrying...");
+        await setTimeout(120_000);
+        outputFileName = await scrapAndFindPerson(page, argv.index);
       }
-      console.log("No new requests, closing...");
+
+      const inputDirectory = `${outputFileName}-${formatDate(new Date())}`;
+
+      await page.setRequestInterception(true);
+
+      const fileNumbers: Set<number> = new Set();
+
+      // Event listener for intercepted requests
+      page.on("request", async (request) => {
+        this.onRequest(request, fileNumbers, inputDirectory);
+      });
+
+      this.interactions();
+
+      const url = `${outputFileName}/`;
+      // Go to the desired webpage
+      await page.goto(url);
+      console.log(`Page ${url} loaded successfully`);
+
+      if (argv.minutes) {
+        await setTimeout(60_000 * Number(argv.minutes));
+      } else {
+        while (this.HAD_NEW_REQUEST && !this.SHOULD_STOP) {
+          console.log("Waiting for new requests...");
+          this.HAD_NEW_REQUEST = false;
+          await setTimeout(60_000 * 5);
+        }
+        console.log("No new requests, closing...");
+      }
+
+      await browser.close();
+      console.log("Browser closed");
+
+      if (this.SHOULD_STOP) {
+        break;
+      }
+
+      const fileListPath = generateFileList(inputDirectory);
+      await this.concatVideos(fileListPath, outputFileName, inputDirectory, 0);
+      // Delete the filelist.txt file
+      deleteTmpFiles(fileListPath, inputDirectory);
     }
-
-    await browser.close();
-    console.log("Browser closed");
-
-    const fileListPath = generateFileList(inputDirectory);
-    await this.concatVideos(fileListPath, outputFileName, inputDirectory, 0);
-    // Delete the filelist.txt file
-    deleteTmpFiles(fileListPath, inputDirectory);
+    process.exit();
   };
 }
 
