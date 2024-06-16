@@ -11,10 +11,15 @@
   "license": "ISC",
   "dependencies": {
     "@types/node": "^20.14.2",
+    "@types/yargs": "^17.0.32",
     "puppeteer": "^22.11.0",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "yargs": "^17.7.2"
   },
   "devDependencies": {
-    "ts-node": "^10.9.2"
+    "eslint": "^9.5.0",
+    "globals": "^15.5.0",
+    "ts-node": "^10.9.2",
+    "typescript-eslint": "^7.13.0"
   }
 }
