@@ -131,3 +131,6 @@ dist
 
 tmp/
 videos/
+
+test.ts
+.DS_Store
