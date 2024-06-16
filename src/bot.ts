@@ -8,7 +8,7 @@ const { setTimeout } = require("timers/promises");
 const outputFileName = process.argv[2];
 const inputDirectory = process.argv[3];
 const maxAttempts = 3;
-const timeout = 3600000 / 4;
+const timeout = 60_000 * (Number(process.argv[4]) ?? 30)
 
 const runFFmpeg = async (
   fileListPath: string,
