@@ -1,4 +1,5 @@
 import { exec } from "child_process";
+import logger from "./logger";
 
 export function formatDate(date: Date): string {
   const pad = (n: number) => ("0" + n).slice(-2);
@@ -14,13 +15,11 @@ export const execPromise = (command: string): Promise<string> => {
     const process = exec(command);
 
     process.stdout?.on("data", (data: Buffer) => {
-      // eslint-disable-next-line no-console
-      console.log(data.toString());
+      logger.info(data.toString());
     });
 
     process.stderr?.on("data", (data: Buffer) => {
-      // eslint-disable-next-line no-console
-      console.error(data.toString());
+      logger.error(data.toString());
     });
 
     process.on("close", (code: number) => {

@@ -1,4 +1,5 @@
 import { Page } from "puppeteer";
+import logger from "./logger";
 
 const list = [
 ];
@@ -48,8 +49,7 @@ export const scrapAndFindPerson = async (
     }
   }
 
-  // eslint-disable-next-line no-console
-  console.info(JSON.stringify(loggedIn, null, 2));
+  logger.info(loggedIn);
 
   const sortedByViewers = loggedIn.sort((a, b) => b.viewers - a.viewers);
   const rankOne = sortedByViewers.filter((person) => person.rank === 1);

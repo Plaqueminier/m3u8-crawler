@@ -1,6 +1,7 @@
 import { execPromise, formatDate } from "./utils";
 import path from "path";
 import fs from "fs";
+import logger from "./logger";
 
 export const runFFmpeg = async (
   fileListPath: string,
@@ -19,8 +20,7 @@ export const deleteTmpFiles = (
   // Delete the filelist.txt file
   fs.unlinkSync(fileListPath);
   fs.rmSync(inputDir, { recursive: true, force: true });
-  // eslint-disable-next-line no-console
-  console.log("filelist.txt has been deleted.");
+  logger.info("filelist.txt has been deleted.");
 };
 
 export const generateFileList = (inputDir: string): string => {

@@ -14,6 +14,7 @@
     "@types/yargs": "^17.0.32",
     "puppeteer": "^22.11.0",
     "typescript": "^5.4.5",
+    "winston": "^3.13.0",
     "yargs": "^17.7.2"
   },
   "devDependencies": {

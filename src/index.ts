@@ -7,6 +7,7 @@ import { setTimeout } from "timers/promises";
 import EventEmitter from "events";
 import { formatDate } from "./utils";
 import { deleteTmpFiles, generateFileList, runFFmpeg } from "./files";
+import logger from "./logger";
 
 class Crawler {
   HAD_NEW_REQUEST = true;
@@ -42,8 +43,7 @@ class Crawler {
 
       fileNumbers.add(fileNumber);
 
-      // eslint-disable-next-line no-console
-      console.log(
+      logger.info(
         `Downloaded and saved to ${filePath}, ${fileNumbers.size} files downloaded`
       );
       this.HAD_NEW_REQUEST = true;
@@ -58,22 +58,18 @@ class Crawler {
     attempt: number
   ): Promise<void> => {
     try {
-      // eslint-disable-next-line no-console
-      console.log("Starting ffmpeg...");
+      logger.info("Starting ffmpeg...");
       // Concatenate the files using ffmpeg
       try {
         await runFFmpeg(fileListPath, outputFile);
-        // eslint-disable-next-line no-console
-        console.log("ts file created successfully, now mp4...");
+        logger.info("ts file created successfully, now mp4...");
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error(
+        logger.error(
           "An error occurred while concatenating the files:",
           error
         );
         if (attempt < this.MAX_ATTEMPTS) {
-          // eslint-disable-next-line no-console
-          console.log("Retrying...");
+          logger.info("Retrying...");
           return this.concatVideos(
             fileListPath,
             outputFile,
@@ -81,12 +77,10 @@ class Crawler {
             attempt + 1
           );
         }
-        // eslint-disable-next-line no-console
-        console.error("Max attempts reached. Exiting...");
+        logger.error("Max attempts reached. Exiting...");
       }
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error("An error occurred:", error);
+      logger.error("An error occurred:", error);
     }
   };
 
@@ -98,16 +92,14 @@ class Crawler {
     eventEmitter.on("keyPress", (key) => {
       if (key === "q") {
         this.SHOULD_STOP = true;
-        // eslint-disable-next-line no-console
-        console.log("Exiting after 5 minutes maximum...");
+        logger.info("Exiting after 5 minutes maximum...");
       }
     });
 
     function handleKeyPress(key: string) {
       if (key === "\u0003") {
         // Ctrl+C
-        // eslint-disable-next-line no-console
-        console.log("\nExiting...");
+        logger.info("\nExiting...");
         process.exit();
       } else {
         eventEmitter.emit("keyPress", key);
@@ -156,8 +148,7 @@ class Crawler {
         : await scrapAndFindPerson(page, argv.index);
 
       while (!outputFileName) {
-        // eslint-disable-next-line no-console
-        console.log("No username found, retrying...");
+        logger.info("No username found, retrying...");
         await setTimeout(120_000);
         outputFileName = await scrapAndFindPerson(page, argv.index);
       }
@@ -181,36 +172,29 @@ class Crawler {
         // Go to the desired webpage
         await page.goto(url);
 
-        // eslint-disable-next-line no-console
-        console.log(`Page ${url} loaded successfully`);
+        logger.info(`Page ${url} loaded successfully`);
         await setTimeout(60_000 * Number(argv.minutes));
       } else {
         while (this.HAD_NEW_REQUEST && !this.SHOULD_STOP) {
-          scrapAndFindPerson(page, argv.index);
-          await page.waitForNavigation();
+          await scrapAndFindPerson(page, argv.index);
           await page.goto(url);
 
-          // eslint-disable-next-line no-console
-          console.log(`Page ${url} loaded successfully`);
+          logger.info(`Page ${url} loaded successfully`);
 
-          // eslint-disable-next-line no-console
-          console.log("Waiting for new requests...");
+          logger.info("Waiting for new requests...");
           this.HAD_NEW_REQUEST = false;
           await setTimeout(60_000 * 5);
         }
 
-        // eslint-disable-next-line no-console
-        console.log("No new requests, closing...");
+        logger.info("No new requests, closing...");
       }
 
       await browser.close();
 
-      // eslint-disable-next-line no-console
-      console.log("Browser closed");
+      logger.info("Browser closed");
 
       if (fileNumbers.size === 0) {
-        // eslint-disable-next-line no-console
-        console.log("No files downloaded, retrying...");
+        logger.info("No files downloaded, retrying...");
         continue;
       }
       const fileListPath = generateFileList(inputDirectory);
