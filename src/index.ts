@@ -186,6 +186,10 @@ class Crawler {
       await browser.close();
       console.log("Browser closed");
 
+      if (fileNumbers.size === 0) {
+        console.log("No files downloaded, retrying...");
+        continue;
+      }
       const fileListPath = generateFileList(inputDirectory);
       await this.concatVideos(fileListPath, outputFileName, inputDirectory, 0);
       // Delete the filelist.txt file
