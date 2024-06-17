@@ -58,7 +58,7 @@ export const scrapAndFindPerson = async (page: Page, index: number): Promise<str
     return rankThree[index - rankOne.length - rankTwo.length].username;
   }
   const rankFour = sortedByViewers.filter((person) => person.rank === 4);
-  if (rankOne.length + rankTwo.length + rankThree.length > index) {
+  if (rankOne.length + rankTwo.length + rankThree.length + rankFour.length > index) {
     return rankFour[index - rankOne.length - rankTwo.length - rankThree.length].username;
   }
   return undefined;

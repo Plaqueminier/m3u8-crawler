@@ -186,14 +186,14 @@ class Crawler {
       await browser.close();
       console.log("Browser closed");
 
-      if (this.SHOULD_STOP) {
-        break;
-      }
-
       const fileListPath = generateFileList(inputDirectory);
       await this.concatVideos(fileListPath, outputFileName, inputDirectory, 0);
       // Delete the filelist.txt file
       deleteTmpFiles(fileListPath, inputDirectory);
+
+      if (this.SHOULD_STOP) {
+        break;
+      }
     }
     process.exit();
   };
