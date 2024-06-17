@@ -44,6 +44,8 @@ export const scrapAndFindPerson = async (page: Page, index: number): Promise<str
     }
   }
 
+  console.info(JSON.stringify(loggedIn, null, 2));
+
   const sortedByViewers = loggedIn.sort((a, b) => b.viewers - a.viewers);
   const rankOne = sortedByViewers.filter((person) => person.rank === 1);
   if (rankOne.length > index) {

@@ -168,14 +168,18 @@ class Crawler {
       this.interactions();
 
       const url = `${outputFileName}/`;
-      // Go to the desired webpage
-      await page.goto(url);
-      console.log(`Page ${url} loaded successfully`);
 
       if (argv.minutes) {
+        // Go to the desired webpage
+        await page.goto(url);
+        console.log(`Page ${url} loaded successfully`);
         await setTimeout(60_000 * Number(argv.minutes));
       } else {
         while (this.HAD_NEW_REQUEST && !this.SHOULD_STOP) {
+          scrapAndFindPerson(page, argv.index);
+          // Go to the desired webpage
+          await page.goto(url);
+          console.log(`Page ${url} loaded successfully`);
           console.log("Waiting for new requests...");
           this.HAD_NEW_REQUEST = false;
           await setTimeout(60_000 * 5);
