@@ -34,7 +34,12 @@ export const scrapAndFindPerson = async (
   const url = "";
   // Go to the desired webpage
   await page.goto(url);
-  await page.waitForSelector(".endless_page_template");
+  try {
+    await page.waitForSelector(".endless_page_template");
+  } catch (error) {
+    logger.error("The selector .endless_page_template was not found.", error);
+    return undefined;
+  }
 
   const loggedIn = [];
   for (const person of list) {
