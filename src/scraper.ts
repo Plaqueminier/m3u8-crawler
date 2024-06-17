@@ -1,6 +1,7 @@
 import { Page } from "puppeteer";
 
-const list = [];
+const list = [
+];
 
 const getViewersCount = async (page: Page, person: string): Promise<number> => {
   const viewersString = await page.evaluate((textToMatch) => {
@@ -25,8 +26,11 @@ const getViewersCount = async (page: Page, person: string): Promise<number> => {
   return 0;
 };
 
-export const scrapAndFindPerson = async (page: Page, index: number): Promise<string | undefined> => {
-  const url = ``;
+export const scrapAndFindPerson = async (
+  page: Page,
+  index: number
+): Promise<string | undefined> => {
+  const url = "";
   // Go to the desired webpage
   await page.goto(url);
   await page.waitForSelector(".endless_page_template");
@@ -44,12 +48,13 @@ export const scrapAndFindPerson = async (page: Page, index: number): Promise<str
     }
   }
 
+  // eslint-disable-next-line no-console
   console.info(JSON.stringify(loggedIn, null, 2));
 
   const sortedByViewers = loggedIn.sort((a, b) => b.viewers - a.viewers);
   const rankOne = sortedByViewers.filter((person) => person.rank === 1);
   if (rankOne.length > index) {
-    return rankOne[index].username
+    return rankOne[index].username;
   }
   const rankTwo = sortedByViewers.filter((person) => person.rank === 2);
   if (rankOne.length + rankTwo.length > index) {
@@ -60,8 +65,12 @@ export const scrapAndFindPerson = async (page: Page, index: number): Promise<str
     return rankThree[index - rankOne.length - rankTwo.length].username;
   }
   const rankFour = sortedByViewers.filter((person) => person.rank === 4);
-  if (rankOne.length + rankTwo.length + rankThree.length + rankFour.length > index) {
-    return rankFour[index - rankOne.length - rankTwo.length - rankThree.length].username;
+  if (
+    rankOne.length + rankTwo.length + rankThree.length + rankFour.length >
+    index
+  ) {
+    return rankFour[index - rankOne.length - rankTwo.length - rankThree.length]
+      .username;
   }
   return undefined;
 };

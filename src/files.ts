@@ -12,14 +12,14 @@ export const runFFmpeg = async (
   await execPromise(concatCommand);
 };
 
-
-export const deleteTmpFiles = async (
+export const deleteTmpFiles = (
   fileListPath: string,
   inputDir: string
-): Promise<void> => {
+): void => {
   // Delete the filelist.txt file
   fs.unlinkSync(fileListPath);
   fs.rmSync(inputDir, { recursive: true, force: true });
+  // eslint-disable-next-line no-console
   console.log("filelist.txt has been deleted.");
 };
 

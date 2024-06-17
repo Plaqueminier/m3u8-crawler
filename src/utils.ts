@@ -13,15 +13,17 @@ export const execPromise = (command: string): Promise<string> => {
   return new Promise((resolve, reject) => {
     const process = exec(command);
 
-    process.stdout?.on("data", (data: any) => {
+    process.stdout?.on("data", (data: Buffer) => {
+      // eslint-disable-next-line no-console
       console.log(data.toString());
     });
 
-    process.stderr?.on("data", (data: any) => {
+    process.stderr?.on("data", (data: Buffer) => {
+      // eslint-disable-next-line no-console
       console.error(data.toString());
     });
 
-    process.on("close", (code: any) => {
+    process.on("close", (code: number) => {
       if (code === 0) {
         resolve("Command executed successfully");
       } else {
