@@ -63,8 +63,10 @@ class Crawler {
       try {
         const realFileName = await runFFmpeg(fileListPath, outputFile);
         logger.info("ts file created successfully");
+        const sourcePath = path.join(__dirname, realFileName);
         const destinationPath = path.join(__dirname, "videos", realFileName);
-        fs.rename(realFileName, destinationPath, (err) => {
+        logger.info("Moving file to videos folder...", { sourcePath, destinationPath });
+        fs.rename(sourcePath, destinationPath, (err) => {
           if (err) {
             logger.error("Error moving file:", err);
           } else {
