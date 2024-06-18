@@ -6,11 +6,11 @@ import logger from "./logger";
 export const runFFmpeg = async (
   fileListPath: string,
   outputFile: string
-): Promise<void> => {
-  const concatCommand = `ffmpeg -loglevel error -f concat -safe 0 -i "${fileListPath}" -c copy "${outputFile}-${formatDate(
-    new Date()
-  )}.ts"`;
+): Promise<string> => {
+  const fileName = `${outputFile}-${formatDate(new Date())}.ts`;
+  const concatCommand = `ffmpeg -loglevel error -f concat -safe 0 -i "${fileListPath}" -c copy ${fileName}"`;
   await execPromise(concatCommand);
+  return fileName;
 };
 
 export const deleteTmpFiles = (
