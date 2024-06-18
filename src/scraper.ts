@@ -63,7 +63,7 @@ export const scrapAndFindPerson = async (
     }
   }
 
-  logger.info(loggedIn);
+  logger.info("logged in", { metadata: loggedIn });
 
   const sortedByViewers = loggedIn.sort((a, b) => b.viewers - a.viewers);
   const rankOne = sortedByViewers.filter((person) => person.rank === 1);

@@ -63,8 +63,8 @@ class Crawler {
       try {
         const realFileName = await runFFmpeg(fileListPath, outputFile);
         logger.info("ts file created successfully");
-        const sourcePath = path.join(__dirname, realFileName);
-        const destinationPath = path.join(__dirname, "videos", realFileName);
+        const sourcePath = path.join(realFileName);
+        const destinationPath = path.join("videos", realFileName);
         logger.info("Moving file to videos folder...", { sourcePath, destinationPath });
         fs.rename(sourcePath, destinationPath, (err) => {
           if (err) {
@@ -106,7 +106,7 @@ class Crawler {
     function handleKeyPress(key: string) {
       if (key === "\u0003") {
         // Ctrl+C
-        logger.info("\nExiting...");
+        logger.info("Exiting...");
         process.exit();
       } else {
         eventEmitter.emit("keyPress", key);
