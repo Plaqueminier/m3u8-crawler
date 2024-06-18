@@ -43,8 +43,10 @@ export const scrapAndFindPerson = async (
       await page.waitForSelector(".endless_page_template");
     } catch (err2) {
       logger.error("The selector .endless_page_template was not found.", {
-        err1,
-        err2,
+        metadata: {
+          err1,
+          err2,
+        },
       });
       return undefined;
     }
