@@ -10,8 +10,11 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.598.0",
     "@types/node": "^20.14.2",
     "@types/yargs": "^17.0.32",
+    "client-s3": "link:@types/aws-sdk/client-s3",
+    "dotenv": "^16.4.5",
     "puppeteer": "^22.11.0",
     "typescript": "^5.4.5",
     "winston": "^3.13.0",

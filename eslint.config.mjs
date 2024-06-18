@@ -24,7 +24,6 @@ export default [
       "keyword-spacing": ["error", { before: true, after: true }],
       "space-infix-ops": "error",
       "spaced-comment": ["error", "always", { exceptions: ["-"] }],
-      complexity: ["error", { max: 10 }],
       "default-case": "error",
       "dot-notation": ["error", { allowKeywords: true }],
       "func-names": ["error", "always"],

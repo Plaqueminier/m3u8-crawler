@@ -62,12 +62,17 @@ class Crawler {
       // Concatenate the files using ffmpeg
       try {
         await runFFmpeg(fileListPath, outputFile);
-        logger.info("ts file created successfully, now mp4...");
+        logger.info("ts file created successfully");
+        const destinationPath = path.join(__dirname, "videos", outputFile);
+        fs.rename(outputFile, destinationPath, (err) => {
+          if (err) {
+            logger.error("Error moving file:", err);
+          } else {
+            logger.info("File moved successfully");
+          }
+        });
       } catch (error) {
-        logger.error(
-          "An error occurred while concatenating the files:",
-          error
-        );
+        logger.error("An error occurred while concatenating the files:", error);
         if (attempt < this.MAX_ATTEMPTS) {
           logger.info("Retrying...");
           return this.concatVideos(
@@ -176,7 +181,10 @@ class Crawler {
         await setTimeout(60_000 * Number(argv.minutes));
       } else {
         while (this.HAD_NEW_REQUEST && !this.SHOULD_STOP) {
-          await scrapAndFindPerson(page, argv.index);
+          const newName = await scrapAndFindPerson(page, argv.index);
+          if (newName && newName !== outputFileName) {
+            break;
+          }
           await page.goto(url);
 
           logger.info(`Page ${url} loaded successfully`);
@@ -186,7 +194,7 @@ class Crawler {
           await setTimeout(60_000 * 5);
         }
 
-        logger.info("No new requests, closing...");
+        logger.info("No new requests or name in order changed, closing...");
       }
 
       await browser.close();
