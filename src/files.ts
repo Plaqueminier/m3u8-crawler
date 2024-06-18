@@ -8,7 +8,7 @@ export const runFFmpeg = async (
   outputFile: string
 ): Promise<string> => {
   const fileName = `${outputFile}-${formatDate(new Date())}.ts`;
-  const concatCommand = `ffmpeg -loglevel error -f concat -safe 0 -i "${fileListPath}" -c copy ${fileName}"`;
+  const concatCommand = `ffmpeg -loglevel error -f concat -safe 0 -i "${fileListPath}" -c copy "${fileName}"`;
   await execPromise(concatCommand);
   return fileName;
 };
