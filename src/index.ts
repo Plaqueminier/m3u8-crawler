@@ -1,6 +1,6 @@
 import path from "path";
 import fs from "fs";
-import puppeteer, { Browser, HTTPRequest, Page } from "puppeteer";
+import puppeteer, { Browser, HTTPRequest } from "puppeteer";
 import { scrapAndFindPerson } from "./scraper";
 import yargs from "yargs";
 import { setTimeout } from "timers/promises";
@@ -141,7 +141,7 @@ class Crawler {
         defaultViewport: { width: 1920, height: 1080 },
       });
       // Open a new page
-      const page: Page = await browser.newPage();
+      const [page] = await browser.pages();
 
       let outputFileName = argv.name
         ? argv.name
