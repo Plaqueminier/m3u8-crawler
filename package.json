@@ -11,6 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "@aws-sdk/client-s3": "^3.598.0",
+    "@aws-sdk/lib-storage": "^3.598.0",
     "@types/node": "^20.14.2",
     "@types/yargs": "^17.0.32",
     "client-s3": "link:@types/aws-sdk/client-s3",

@@ -1,10 +1,9 @@
 import logger from "./logger";
 import fs from "fs";
-import {
-  PutObjectCommand,
-  S3Client,
-} from "@aws-sdk/client-s3";
+import { S3Client } from "@aws-sdk/client-s3";
 import dotenv from "dotenv";
+import path from "path";
+import { Upload } from "@aws-sdk/lib-storage";
 dotenv.config();
 
 // Load environment variables
@@ -26,17 +25,32 @@ const s3Client = new S3Client({
 
 async function uploadFile(filePath: string): Promise<void> {
   const fileStream = fs.createReadStream(filePath);
+  const fileName = path.basename(filePath);
 
-  const uploadParams = {
-    Bucket: BUCKET_NAME,
-    Key: filePath.split("/").pop(), // Use the file name as the key
-    Body: fileStream,
-    ContentType: "video/mp4", // Default content type
-  };
+  // Create an upload object from AWS SDK's lib-storage
+  const upload = new Upload({
+    client: s3Client,
+    params: {
+      Bucket: BUCKET_NAME,
+      Key: fileName,
+      Body: fileStream,
+      ContentType: "video/mp4", // Default content type
+    },
+  });
+
+  upload.on("httpUploadProgress", (progress) => {
+    logger.info(
+      `Uploaded ${progress.loaded} bytes out of ${
+        progress.total
+      } bytes. (${Math.round(
+        ((progress.loaded ?? 1) / (progress.total ?? 1)) * 100
+      )}%)`
+    );
+  });
 
   try {
-    const command = new PutObjectCommand(uploadParams);
-    const response = await s3Client.send(command);
+    logger.info("Starting file upload...");
+    const response = await upload.done();
     logger.info("File uploaded successfully:", response);
   } catch (err) {
     logger.error("Error uploading file:", err);
