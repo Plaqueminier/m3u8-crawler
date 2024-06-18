@@ -66,13 +66,7 @@ class Crawler {
         const sourcePath = path.join(realFileName);
         const destinationPath = path.join("videos", realFileName);
         logger.info("Moving file to videos folder...", { sourcePath, destinationPath });
-        fs.rename(sourcePath, destinationPath, (err) => {
-          if (err) {
-            logger.error("Error moving file:", err);
-          } else {
-            logger.info("File moved successfully");
-          }
-        });
+        fs.renameSync(sourcePath, destinationPath);
       } catch (error) {
         logger.error("An error occurred while concatenating the files:", error);
         if (attempt < this.MAX_ATTEMPTS) {
