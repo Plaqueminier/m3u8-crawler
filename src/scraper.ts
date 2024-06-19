@@ -27,29 +27,30 @@ const getViewersCount = async (page: Page, person: string): Promise<number> => {
   return 0;
 };
 
+const attemptScrap = async (page: Page, attempt: number): Promise<boolean> => {
+  const MAX_ATTEMPTS = 5;
+  try {
+    await page.reload();
+    await page.waitForSelector(".cardTitle > a");
+  } catch {
+    if (attempt > MAX_ATTEMPTS) {
+      return false;
+    }
+    logger.warn("Failed to load page. Retrying...", { metadata: { attempt } });
+    return attemptScrap(page, attempt + 1);
+  }
+  return true;
+};
+
 export const scrapAndFindPerson = async (
   page: Page,
   index: number
 ): Promise<string | undefined> => {
-  const url = "";
-  // Go to the desired webpage
+  const url = process.env.URL ?? "";
   await page.goto(url);
 
-  try {
-    await page.waitForSelector(".endless_page_template");
-  } catch (err1) {
-    await page.reload();
-    try {
-      await page.waitForSelector(".endless_page_template");
-    } catch (err2) {
-      logger.error("The selector .endless_page_template was not found.", {
-        metadata: {
-          err1,
-          err2,
-        },
-      });
-      return undefined;
-    }
+  if (!(await attemptScrap(page, 0))) {
+    return undefined;
   }
 
   const loggedIn = [];
@@ -64,8 +65,6 @@ export const scrapAndFindPerson = async (
       });
     }
   }
-
-  logger.info("logged in", { metadata: loggedIn });
 
   const sortedByViewers = loggedIn.sort((a, b) => b.viewers - a.viewers);
   const rankOne = sortedByViewers.filter((person) => person.rank === 1);

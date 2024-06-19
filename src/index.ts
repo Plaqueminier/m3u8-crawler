@@ -42,10 +42,6 @@ class Crawler {
       fs.writeFileSync(filePath, buffer);
 
       fileNumbers.add(fileNumber);
-
-      logger.info(
-        `Downloaded and saved to ${filePath}, ${fileNumbers.size} files downloaded`
-      );
       this.HAD_NEW_REQUEST = true;
     }
     request.continue();
@@ -167,7 +163,7 @@ class Crawler {
 
       this.interactions();
 
-      const url = `${outputFileName}/`;
+      const url = `${process.env.URL}/${outputFileName}/`;
 
       if (argv.minutes) {
         // Go to the desired webpage
@@ -185,12 +181,12 @@ class Crawler {
 
           logger.info(`Page ${url} loaded successfully`);
 
-          logger.info("Waiting for new requests...");
+          logger.info(`Waiting for new requests, currently ${fileNumbers.size} downloaded...`);
           this.HAD_NEW_REQUEST = false;
           await setTimeout(60_000 * 5);
         }
 
-        logger.info("No new requests or name in order changed, closing...");
+        logger.info("No new requests or name in order changed, closing...", { metadata: { outputFileName } });
       }
 
       await browser.close();

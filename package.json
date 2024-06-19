@@ -19,6 +19,7 @@
     "puppeteer": "^22.11.0",
     "typescript": "^5.4.5",
     "winston": "^3.13.0",
+    "winston-loki": "^6.1.2",
     "yargs": "^17.7.2"
   },
   "devDependencies": {

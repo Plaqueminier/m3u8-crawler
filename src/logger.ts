@@ -1,4 +1,8 @@
 import { createLogger, format, transports, Logger } from "winston";
+import dotenv from "dotenv";
+dotenv.config();
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const LokiTransport = require("winston-loki");
 
 // Define the custom format for the logger
 const customFormat = format.combine(
@@ -22,6 +26,11 @@ const logger: Logger = createLogger({
   format: customFormat,
   transports: [
     new transports.Console(), // Log to the console
+    new LokiTransport({
+      host: process.env.LOKI_ENDPOINT,
+      json: true,
+      format: customFormat
+    }),
   ],
 });
 
