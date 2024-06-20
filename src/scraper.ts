@@ -1,106 +1,73 @@
-import { Page } from "puppeteer";
 import logger from "./logger";
 
 const list = [
 ];
 
-const getViewersCount = async (page: Page, person: string): Promise<number> => {
-  const viewersString = await page.evaluate((textToMatch) => {
-    // Get all elements with the class 'cardTitle'
-    const elements = document.querySelectorAll(".cardTitle > a");
-    // Iterate over the elements to find one with the specific innerHTML
-    for (const element of elements) {
-      if (element.innerHTML.trim() === textToMatch) {
-        return element.parentElement?.parentElement?.lastElementChild
-          ?.lastElementChild?.lastElementChild?.innerHTML;
-      }
-    }
-    // Return null if no matching element is found
-    return null;
-  }, person);
+interface ApiType {
+  username: string;
+  num_users: number;
+  current_show: string;
+}
 
-  if (viewersString) {
-    // Extract the number of viewers from the string
-    const viewers = parseInt(viewersString);
-    return viewers;
-  }
-  return 0;
-};
+interface OutputType {
+  username: string;
+  numUsers: number;
+  currentShow: string;
+}
 
-const attemptScrap = async (
-  page: Page,
-  attempt: number,
-  index: number
-): Promise<boolean> => {
-  const MAX_ATTEMPTS = 5;
-  try {
-    await page.reload();
-    await page.waitForSelector(".cardTitle > a", {
-      timeout: 10000,
-    });
-  } catch {
-    if (attempt > MAX_ATTEMPTS) {
-      return false;
-    }
-    logger.warn("Failed to load page. Retrying...", {
-      index,
-      metadata: { attempt },
-    });
-    return attemptScrap(page, attempt + 1, index);
-  }
-  return true;
-};
-
-export const scrapAndFindPerson = async (
-  page: Page,
+export const findPerson = async (
   index: number
 ): Promise<string | undefined> => {
-  const url = process.env.URL ?? "";
+  const infos = await fetch(process.env.API_URL ?? "https://api.example.com");
 
   try {
-    await page.goto(url);
-  } catch {
-    logger.warn("Failed to load page.", { index });
-    return undefined;
-  }
-
-  if (!(await attemptScrap(page, 0, index))) {
-    return undefined;
-  }
-
-  const loggedIn = [];
-  for (const person of list) {
-    const content = await page.content();
-
-    if (content.includes(person.username)) {
-      loggedIn.push({
-        username: person.username,
-        rank: person.rank,
-        viewers: await getViewersCount(page, person.username),
-      });
+    const jsonRes: OutputType[] = (await infos.json()).results.map(
+      (result: ApiType): OutputType => ({
+        username: result.username,
+        numUsers: result.num_users,
+        currentShow: result.current_show,
+      })
+    );
+    const loggedIn = [];
+    for (const person of list) {
+      const loggedInPerson = jsonRes.find(
+        (logged) =>
+          logged.username === person.username && logged.currentShow === "public"
+      );
+      if (loggedInPerson) {
+        loggedIn.push({
+          username: person.username,
+          rank: person.rank,
+          viewers: loggedInPerson.numUsers,
+        });
+      }
     }
+
+    const sortedByViewers = loggedIn.sort((a, b) => b.viewers - a.viewers);
+    const rankOne = sortedByViewers.filter((person) => person.rank === 1);
+    if (rankOne.length > index) {
+      return rankOne[index].username;
+    }
+    const rankTwo = sortedByViewers.filter((person) => person.rank === 2);
+    if (rankOne.length + rankTwo.length > index) {
+      return rankTwo[index - rankOne.length].username;
+    }
+    const rankThree = sortedByViewers.filter((person) => person.rank === 3);
+    if (rankOne.length + rankTwo.length + rankThree.length > index) {
+      return rankThree[index - rankOne.length - rankTwo.length].username;
+    }
+    const rankFour = sortedByViewers.filter((person) => person.rank === 4);
+    if (
+      rankOne.length + rankTwo.length + rankThree.length + rankFour.length >
+      index
+    ) {
+      return rankFour[
+        index - rankOne.length - rankTwo.length - rankThree.length
+      ].username;
+    }
+  } catch (e) {
+    logger.error("Error fetching data", { index, metadata: e });
   }
 
-  const sortedByViewers = loggedIn.sort((a, b) => b.viewers - a.viewers);
-  const rankOne = sortedByViewers.filter((person) => person.rank === 1);
-  if (rankOne.length > index) {
-    return rankOne[index].username;
-  }
-  const rankTwo = sortedByViewers.filter((person) => person.rank === 2);
-  if (rankOne.length + rankTwo.length > index) {
-    return rankTwo[index - rankOne.length].username;
-  }
-  const rankThree = sortedByViewers.filter((person) => person.rank === 3);
-  if (rankOne.length + rankTwo.length + rankThree.length > index) {
-    return rankThree[index - rankOne.length - rankTwo.length].username;
-  }
-  const rankFour = sortedByViewers.filter((person) => person.rank === 4);
-  if (
-    rankOne.length + rankTwo.length + rankThree.length + rankFour.length >
-    index
-  ) {
-    return rankFour[index - rankOne.length - rankTwo.length - rankThree.length]
-      .username;
-  }
   return undefined;
 };

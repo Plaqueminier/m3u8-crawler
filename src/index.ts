@@ -1,7 +1,7 @@
 import path from "path";
 import fs from "fs";
 import puppeteer, { Browser, HTTPRequest } from "puppeteer";
-import { scrapAndFindPerson } from "./scraper";
+import { findPerson } from "./scraper";
 import yargs from "yargs";
 import { setTimeout } from "timers/promises";
 import EventEmitter from "events";
@@ -149,23 +149,31 @@ class Crawler {
     this.index = argv.index;
 
     while (true) {
-      // Launch the browser
       const browser: Browser = await puppeteer.launch({
         defaultViewport: { width: 1920, height: 1080 },
-        args: ["--no-sandbox"],
-        headless: false,
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+          "--disable-session-crashed-bubble",
+          "--disable-accelerated-2d-canvas",
+          "--no-first-run",
+          "--no-zygote",
+          "--single-process",
+          "--noerrdialogs",
+          "--disable-gpu",
+        ],
       });
-      // Open a new page
       const [page] = await browser.pages();
 
       let outputFileName = argv.name
         ? argv.name
-        : await scrapAndFindPerson(page, this.index);
+        : await findPerson(this.index);
 
       while (!outputFileName) {
         logger.info("No username found, retrying...", { index: this.index });
         await setTimeout(120_000);
-        outputFileName = await scrapAndFindPerson(page, this.index);
+        outputFileName = await findPerson(this.index);
       }
 
       const inputDirectory = `${outputFileName}-${formatDate(new Date())}`;
@@ -182,21 +190,18 @@ class Crawler {
       this.interactions();
 
       const url = `${process.env.URL}/${outputFileName}/`;
+      await page.goto(url);
 
       if (argv.minutes) {
-        // Go to the desired webpage
-        await page.goto(url);
-
         logger.info(`Page ${url} loaded successfully`, { index: this.index });
         await setTimeout(60_000 * Number(argv.minutes));
       } else {
         this.HAD_NEW_REQUEST = true;
         while (this.HAD_NEW_REQUEST && !this.SHOULD_STOP) {
-          const newName = await scrapAndFindPerson(page, this.index);
+          const newName = await findPerson(this.index);
           if (newName && newName !== outputFileName) {
             break;
           }
-          await page.goto(url);
 
           logger.info(
             `Waiting for new requests, currently ${fileNumbers.size} downloaded of ${outputFileName}...`,
