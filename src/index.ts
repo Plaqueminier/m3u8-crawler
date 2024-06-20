@@ -13,6 +13,7 @@ class Crawler {
   HAD_NEW_REQUEST = true;
   MAX_ATTEMPTS = 3;
   SHOULD_STOP = false;
+  index = 0;
 
   onRequest = async (
     request: HTTPRequest,
@@ -58,13 +59,19 @@ class Crawler {
       // Concatenate the files using ffmpeg
       try {
         const realFileName = await runFFmpeg(fileListPath, outputFile);
-        logger.info("ts file created successfully");
+        logger.info("ts file created successfully", { index: this.index });
         const sourcePath = path.join(realFileName);
         const destinationPath = path.join("videos", realFileName);
-        logger.info("Moving file to videos folder...", { sourcePath, destinationPath });
+        logger.info("Moving file to videos folder...", {
+          index: this.index,
+          metadata: { sourcePath, destinationPath },
+        });
         fs.renameSync(sourcePath, destinationPath);
       } catch (error) {
-        logger.error("An error occurred while concatenating the files:", error);
+        logger.error("An error occurred while concatenating the files:", {
+          index: this.index,
+          metadata: { error },
+        });
         if (attempt < this.MAX_ATTEMPTS) {
           logger.info("Retrying...");
           return this.concatVideos(
@@ -74,10 +81,15 @@ class Crawler {
             attempt + 1
           );
         }
-        logger.error("Max attempts reached. Exiting...");
+        logger.error("Max attempts reached. Exiting...", {
+          index: this.index,
+        });
       }
     } catch (error) {
-      logger.error("An error occurred:", error);
+      logger.error("An error occurred:", {
+        index: this.index,
+        metadata: { error },
+      });
     }
   };
 
@@ -89,19 +101,21 @@ class Crawler {
     eventEmitter.on("keyPress", (key) => {
       if (key === "q") {
         this.SHOULD_STOP = true;
-        logger.info("Exiting after 5 minutes maximum...");
+        logger.info("Exiting after 5 minutes maximum...", {
+          index: this.index,
+        });
       }
     });
 
-    function handleKeyPress(key: string) {
+    const handleKeyPress = (key: string) => {
       if (key === "\u0003") {
         // Ctrl+C
-        logger.info("Exiting...");
+        logger.info("Exiting...", { index: this.index });
         process.exit();
       } else {
         eventEmitter.emit("keyPress", key);
       }
-    }
+    };
 
     // Set up stdin to listen for key presses
     process.stdin.setRawMode(true);
@@ -132,22 +146,26 @@ class Crawler {
       .help()
       .alias("help", "h").argv;
 
+    this.index = argv.index;
+
     while (true) {
       // Launch the browser
       const browser: Browser = await puppeteer.launch({
         defaultViewport: { width: 1920, height: 1080 },
+        args: ["--no-sandbox"],
+        headless: false,
       });
       // Open a new page
       const [page] = await browser.pages();
 
       let outputFileName = argv.name
         ? argv.name
-        : await scrapAndFindPerson(page, argv.index);
+        : await scrapAndFindPerson(page, this.index);
 
       while (!outputFileName) {
-        logger.info("No username found, retrying...");
+        logger.info("No username found, retrying...", { index: this.index });
         await setTimeout(120_000);
-        outputFileName = await scrapAndFindPerson(page, argv.index);
+        outputFileName = await scrapAndFindPerson(page, this.index);
       }
 
       const inputDirectory = `${outputFileName}-${formatDate(new Date())}`;
@@ -169,32 +187,37 @@ class Crawler {
         // Go to the desired webpage
         await page.goto(url);
 
-        logger.info(`Page ${url} loaded successfully`);
+        logger.info(`Page ${url} loaded successfully`, { index: this.index });
         await setTimeout(60_000 * Number(argv.minutes));
       } else {
+        this.HAD_NEW_REQUEST = true;
         while (this.HAD_NEW_REQUEST && !this.SHOULD_STOP) {
-          const newName = await scrapAndFindPerson(page, argv.index);
+          const newName = await scrapAndFindPerson(page, this.index);
           if (newName && newName !== outputFileName) {
             break;
           }
           await page.goto(url);
 
-          logger.info(`Page ${url} loaded successfully`);
-
-          logger.info(`Waiting for new requests, currently ${fileNumbers.size} downloaded...`);
+          logger.info(
+            `Waiting for new requests, currently ${fileNumbers.size} downloaded of ${outputFileName}...`,
+            { index: this.index }
+          );
           this.HAD_NEW_REQUEST = false;
           await setTimeout(60_000 * 5);
         }
 
-        logger.info("No new requests or name in order changed, closing...", { metadata: { outputFileName } });
+        logger.info("No new requests or name in order changed, closing...", {
+          index: this.index,
+          metadata: { outputFileName },
+        });
       }
 
       await browser.close();
 
-      logger.info("Browser closed");
+      logger.info("Browser closed", { index: this.index });
 
       if (fileNumbers.size === 0) {
-        logger.info("No files downloaded, retrying...");
+        logger.info("No files downloaded, retrying...", { index: this.index });
         continue;
       }
       const fileListPath = generateFileList(inputDirectory);

@@ -27,17 +27,26 @@ const getViewersCount = async (page: Page, person: string): Promise<number> => {
   return 0;
 };
 
-const attemptScrap = async (page: Page, attempt: number): Promise<boolean> => {
+const attemptScrap = async (
+  page: Page,
+  attempt: number,
+  index: number
+): Promise<boolean> => {
   const MAX_ATTEMPTS = 5;
   try {
     await page.reload();
-    await page.waitForSelector(".cardTitle > a");
+    await page.waitForSelector(".cardTitle > a", {
+      timeout: 10000,
+    });
   } catch {
     if (attempt > MAX_ATTEMPTS) {
       return false;
     }
-    logger.warn("Failed to load page. Retrying...", { metadata: { attempt } });
-    return attemptScrap(page, attempt + 1);
+    logger.warn("Failed to load page. Retrying...", {
+      index,
+      metadata: { attempt },
+    });
+    return attemptScrap(page, attempt + 1, index);
   }
   return true;
 };
@@ -47,9 +56,15 @@ export const scrapAndFindPerson = async (
   index: number
 ): Promise<string | undefined> => {
   const url = process.env.URL ?? "";
-  await page.goto(url);
 
-  if (!(await attemptScrap(page, 0))) {
+  try {
+    await page.goto(url);
+  } catch {
+    logger.warn("Failed to load page.", { index });
+    return undefined;
+  }
+
+  if (!(await attemptScrap(page, 0, index))) {
     return undefined;
   }
 

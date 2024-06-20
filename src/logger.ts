@@ -14,6 +14,7 @@ const customFormat = format.combine(
       timestamp: info.timestamp,
       level: info.level,
       message: info.message,
+      index: info.index, // Include index if present
       ...(info.metadata && { metadata: info.metadata }), // Include meta if present
     };
     return JSON.stringify(logEntry, null, 2); // Pretty-print with 2 spaces of indentation

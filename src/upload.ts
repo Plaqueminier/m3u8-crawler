@@ -49,11 +49,13 @@ async function uploadFile(filePath: string): Promise<void> {
   });
 
   try {
-    logger.info("Starting file upload...");
+    logger.info("Starting file upload...", { metadata: { fileName } });
     const response = await upload.done();
-    logger.info("File uploaded successfully:", response);
+    fileStream.close();
+    logger.info("File uploaded successfully:", { metadata: { fileName, response } });
+    process.exit();
   } catch (err) {
-    logger.error("Error uploading file:", err);
+    logger.error("Error uploading file:", { metadata: err });
   }
 }
 
