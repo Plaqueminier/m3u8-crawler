@@ -4,7 +4,7 @@
 DIRECTORY="/root/m3u8-crawler/videos/"
 
 # Interval in seconds (20 minutes)
-INTERVAL=1200
+INTERVAL=600
 
 # Function to process .ts files
 process_files() {
