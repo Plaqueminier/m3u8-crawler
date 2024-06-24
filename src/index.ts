@@ -166,9 +166,7 @@ class Crawler {
       });
       const [page] = await browser.pages();
 
-      let outputFileName = argv.name
-        ? argv.name
-        : await findPerson(this.index);
+      let outputFileName = argv.name ? argv.name : await findPerson(this.index);
 
       while (!outputFileName) {
         logger.info("No username found, retrying...", { index: this.index });
@@ -190,6 +188,7 @@ class Crawler {
       this.interactions();
 
       const url = `${process.env.URL}/${outputFileName}/`;
+
       await page.goto(url);
 
       if (argv.minutes) {
@@ -205,7 +204,7 @@ class Crawler {
 
           logger.info(
             `Waiting for new requests, currently ${fileNumbers.size} downloaded of ${outputFileName}...`,
-            { index: this.index }
+            { index: this.index, metadata: { username: outputFileName } }
           );
           this.HAD_NEW_REQUEST = false;
           await setTimeout(60_000 * 5);

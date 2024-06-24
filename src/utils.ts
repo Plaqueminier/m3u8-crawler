@@ -10,7 +10,7 @@ export function formatDate(date: Date): string {
   )}`;
 }
 
-export const execPromise = (command: string): Promise<string> => {
+export const execPromise = (command: string): Promise<boolean> => {
   return new Promise((resolve, reject) => {
     const process = exec(command);
 
@@ -20,11 +20,12 @@ export const execPromise = (command: string): Promise<string> => {
 
     process.stderr?.on("data", (data: Buffer) => {
       logger.error(data.toString());
+      reject(new Error("Command failed"));
     });
 
     process.on("close", (code: number) => {
       if (code === 0) {
-        resolve("Command executed successfully");
+        resolve(true);
       } else {
         reject(new Error(`Command failed with code ${code}`));
       }
