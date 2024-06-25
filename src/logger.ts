@@ -21,6 +21,13 @@ const customFormat = format.combine(
   })
 );
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const dynamicLabels = (info: any) => {
+  return {
+    index: info.index || "default", // Set a default value if index is not present
+  };
+};
+
 // Instantiate a Winston logger with the custom format and console transport
 const logger: Logger = createLogger({
   level: "info", // Set the default log level
@@ -30,7 +37,9 @@ const logger: Logger = createLogger({
     new LokiTransport({
       host: process.env.LOKI_ENDPOINT,
       json: true,
-      format: customFormat
+      format: customFormat,
+      labels: dynamicLabels,
+      replaceTimestamp: true,
     }),
   ],
 });

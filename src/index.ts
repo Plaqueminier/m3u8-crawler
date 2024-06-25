@@ -67,6 +67,7 @@ class Crawler {
           metadata: { sourcePath, destinationPath },
         });
         fs.renameSync(sourcePath, destinationPath);
+        deleteTmpFiles(fileListPath, inputDirectory);
       } catch (error) {
         logger.error("An error occurred while concatenating the files:", {
           index: this.index,
@@ -227,7 +228,6 @@ class Crawler {
       const fileListPath = generateFileList(inputDirectory);
       await this.concatVideos(fileListPath, outputFileName, inputDirectory, 0);
       // Delete the filelist.txt file
-      deleteTmpFiles(fileListPath, inputDirectory);
 
       if (this.SHOULD_STOP) {
         break;
