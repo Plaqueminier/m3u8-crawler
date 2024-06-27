@@ -25,7 +25,7 @@ const s3Client = new S3Client({
 
 async function uploadFile(filePath: string): Promise<void> {
   const fileStream = fs.createReadStream(filePath);
-  const fileName = path.basename(filePath);
+  const fileName = path.basename(`${filePath.slice(0, -24)}/${filePath}.mp4`);
 
   // Create an upload object from AWS SDK's lib-storage
   const upload = new Upload({
