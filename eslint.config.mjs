@@ -43,7 +43,6 @@ export default [
       "no-useless-return": "error",
       "consistent-this": ["error", "self"],
       "max-depth": ["error", 4],
-      "max-params": ["error", 4],
       "no-alert": "error",
       "no-array-constructor": "error",
       "no-bitwise": "error",
@@ -99,6 +98,7 @@ export default [
       "no-new": "error",
       "no-path-concat": "error",
       "no-restricted-modules": ["error", "fs", "cluster"],
+      "@typescript-eslint/explicit-function-return-type": ["error"],
     },
   },
 ];

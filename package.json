@@ -16,13 +16,14 @@
     "@types/yargs": "^17.0.32",
     "client-s3": "link:@types/aws-sdk/client-s3",
     "dotenv": "^16.4.5",
+    "lodash": "^4.17.21",
     "puppeteer": "^22.11.0",
     "typescript": "^5.4.5",
     "winston": "^3.13.0",
-    "winston-loki": "^6.1.2",
-    "yargs": "^17.7.2"
+    "winston-loki": "^6.1.2"
   },
   "devDependencies": {
+    "@types/lodash": "^4.17.6",
     "eslint": "^9.5.0",
     "globals": "^15.5.0",
     "ts-node": "^10.9.2",

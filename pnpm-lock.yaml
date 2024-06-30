@@ -26,6 +26,9 @@ importers:
       dotenv:
         specifier: ^16.4.5
         version: 16.4.5
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
       puppeteer:
         specifier: ^22.11.0
         version: 22.11.0(typescript@5.4.5)
@@ -38,10 +41,10 @@ importers:
       winston-loki:
         specifier: ^6.1.2
         version: 6.1.2
-      yargs:
-        specifier: ^17.7.2
-        version: 17.7.2
     devDependencies:
+      '@types/lodash':
+        specifier: ^4.17.6
+        version: 4.17.6
       eslint:
         specifier: ^9.5.0
         version: 9.5.0
@@ -638,6 +641,9 @@ packages:
   '@tsconfig/node16@1.0.4':
     resolution: {integrity: sha512-vxhUy4J8lyeyinH7Azl1pdd43GJhZH/tP2weN8TntQblOY+A0XbT8DJk1/oCPuOOyg/Ja757rG0CgHcWC8OfMA==}
 
+  '@types/lodash@4.17.6':
+    resolution: {integrity: sha512-OpXEVoCKSS3lQqjx9GGGOapBeuW5eUboYHRlHP9urXPX25IKZ6AnP5ZRxtVf63iieUbsHxLn8NQ5Nlftc6yzAA==}
+
   '@types/node@20.14.2':
     resolution: {integrity: sha512-xyu6WAMVwv6AKFLB+e/7ySZVr/0zLCzOa7rSpq6jNwpqOrUbcACDWC+53d4n2QHOnDou0fbIsg8wZu/sxrnI4Q==}
 
@@ -1218,6 +1224,9 @@ packages:
 
   lodash.merge@4.6.2:
     resolution: {integrity: sha512-0KpjqXRVvrYyCsX1swR/XTK0va6VQkQM6MNo7PqW77ByjAhoARA8EfrP1N4+KlKj8YS0ZUCtRT/YUuhyYDujIQ==}
+
+  lodash@4.17.21:
+    resolution: {integrity: sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==}
 
   logform@2.6.0:
     resolution: {integrity: sha512-1ulHeNPp6k/LD8H91o7VYFBng5i1BDE7HoKxVbZiGFidS1Rj65qcywLxX+pVfAPoQJEjRdvKcusKwOupHCVOVQ==}
@@ -2636,6 +2645,8 @@ snapshots:
 
   '@tsconfig/node16@1.0.4': {}
 
+  '@types/lodash@4.17.6': {}
+
   '@types/node@20.14.2':
     dependencies:
       undici-types: 5.26.5
@@ -3241,6 +3252,8 @@ snapshots:
       p-locate: 5.0.0
 
   lodash.merge@4.6.2: {}
+
+  lodash@4.17.21: {}
 
   logform@2.6.0:
     dependencies:

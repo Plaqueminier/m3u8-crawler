@@ -2,8 +2,8 @@ import logger from "./logger";
 import fs from "fs";
 import { S3Client } from "@aws-sdk/client-s3";
 import dotenv from "dotenv";
-import path from "path";
 import { Upload } from "@aws-sdk/lib-storage";
+import path from "path";
 dotenv.config();
 
 // Load environment variables
@@ -25,7 +25,9 @@ const s3Client = new S3Client({
 
 async function uploadFile(filePath: string): Promise<void> {
   const fileStream = fs.createReadStream(filePath);
-  const fileName = path.basename(`${filePath.slice(0, -24)}/${filePath}.mp4`);
+  const fileName = `${path.basename(filePath).slice(0, -24)}/${path.basename(
+    filePath
+  )}`;
 
   // Create an upload object from AWS SDK's lib-storage
   const upload = new Upload({
@@ -52,7 +54,9 @@ async function uploadFile(filePath: string): Promise<void> {
     logger.info("Starting file upload...", { metadata: { fileName } });
     const response = await upload.done();
     fileStream.close();
-    logger.info("File uploaded successfully:", { metadata: { fileName, response } });
+    logger.info("File uploaded successfully:", {
+      metadata: { fileName, response },
+    });
     process.exit();
   } catch (err) {
     logger.error("Error uploading file:", { metadata: err });

@@ -1,29 +1,48 @@
 import path from "path";
 import fs from "fs";
-import puppeteer, { Browser, HTTPRequest } from "puppeteer";
+import puppeteer, { Browser, HTTPRequest, Page } from "puppeteer";
 import { findPerson } from "./scraper";
-import yargs from "yargs";
 import { setTimeout } from "timers/promises";
 import EventEmitter from "events";
 import { formatDate } from "./utils";
-import { deleteTmpFiles, generateFileList, runFFmpeg } from "./files";
+import {
+  deleteTmpFiles,
+  generateFileList,
+  removeEmptyFiles,
+  runFFmpeg,
+} from "./files";
 import logger from "./logger";
+import { compact, uniq } from "lodash";
 
 class Crawler {
-  HAD_NEW_REQUEST = true;
+  HAD_NEW_REQUEST = [true, true];
   MAX_ATTEMPTS = 3;
   SHOULD_STOP = false;
-  index = 0;
+
+  currentUsernames: string[] = ["", ""];
+  currentInputDirectories: string[] = ["", ""];
+  currentPageFilesNumber: Set<number>[] = [new Set(), new Set()];
+
+  reset = (): void => {
+    this.currentUsernames = ["", ""];
+    this.currentInputDirectories = ["", ""];
+    this.currentPageFilesNumber = [new Set(), new Set()];
+  };
 
   onRequest = async (
     request: HTTPRequest,
     fileNumbers: Set<number>,
-    inputDirectory: string
-  ) => {
+    inputDirectory: string,
+    index: number
+  ): Promise<void> => {
     if (request.url().endsWith(".ts")) {
       const url = request.url();
       const response = await fetch(request.url());
       const buffer = Buffer.from(await response.arrayBuffer());
+      if (buffer.byteLength === 0) {
+        request.continue();
+        return;
+      }
       const urlPath =
         `${formatDate(new Date())}${new URL(request.url()).pathname
           .split("/")
@@ -43,7 +62,7 @@ class Crawler {
       fs.writeFileSync(filePath, buffer);
 
       fileNumbers.add(fileNumber);
-      this.HAD_NEW_REQUEST = true;
+      this.HAD_NEW_REQUEST[index] = true;
     }
     request.continue();
   };
@@ -59,18 +78,16 @@ class Crawler {
       // Concatenate the files using ffmpeg
       try {
         const realFileName = await runFFmpeg(fileListPath, outputFile);
-        logger.info("ts file created successfully", { index: this.index });
+        logger.info("ts file created successfully");
         const sourcePath = path.join(realFileName);
         const destinationPath = path.join("videos", realFileName);
         logger.info("Moving file to videos folder...", {
-          index: this.index,
           metadata: { sourcePath, destinationPath },
         });
         fs.renameSync(sourcePath, destinationPath);
         deleteTmpFiles(fileListPath, inputDirectory);
       } catch (error) {
         logger.error("An error occurred while concatenating the files:", {
-          index: this.index,
           metadata: { error },
         });
         if (attempt < this.MAX_ATTEMPTS) {
@@ -82,19 +99,16 @@ class Crawler {
             attempt + 1
           );
         }
-        logger.error("Max attempts reached. Exiting...", {
-          index: this.index,
-        });
+        logger.error("Max attempts reached. Exiting...", {});
       }
     } catch (error) {
       logger.error("An error occurred:", {
-        index: this.index,
         metadata: { error },
       });
     }
   };
 
-  interactions = () => {
+  interactions = (): void => {
     // Create an instance of EventEmitter
     const eventEmitter = new EventEmitter();
 
@@ -102,16 +116,14 @@ class Crawler {
     eventEmitter.on("keyPress", (key) => {
       if (key === "q") {
         this.SHOULD_STOP = true;
-        logger.info("Exiting after 5 minutes maximum...", {
-          index: this.index,
-        });
+        logger.info("Exiting after 5 minutes maximum...");
       }
     });
 
-    const handleKeyPress = (key: string) => {
+    const handleKeyPress = (key: string): void => {
       if (key === "\u0003") {
         // Ctrl+C
-        logger.info("Exiting...", { index: this.index });
+        logger.info("Exiting...");
         process.exit();
       } else {
         eventEmitter.emit("keyPress", key);
@@ -126,29 +138,61 @@ class Crawler {
     process.stdin.on("data", handleKeyPress);
   };
 
-  launch = async () => {
-    const argv = await yargs
-      .option("minutes", {
-        alias: "m",
-        description: "Will close after the specified minutes",
-        type: "number",
-      })
-      .option("name", {
-        alias: "n",
-        description: "Provide the username",
-        type: "string",
-      })
-      .option("index", {
-        alias: "i",
-        description: "Provide the index",
-        type: "number",
-        default: 0,
-      })
-      .help()
-      .alias("help", "h").argv;
+  handleTab = async (
+    page: Page,
+    index: number
+  ): Promise<string | undefined> => {
+    const username = await findPerson(index);
+    if (username !== this.currentUsernames[index]) {
+      if (!username) {
+        logger.info("No username found, retrying in 5min...", { index });
+        if (this.currentPageFilesNumber[index].size === 0) {
+          return undefined;
+        }
+        return this.currentInputDirectories[index];
+      }
+      const inputDirectory = `${username}-${formatDate(new Date())}`;
+      this.currentInputDirectories[index] = inputDirectory;
+      this.currentUsernames[index] = username;
+      this.currentPageFilesNumber[index] = new Set();
+      const url = `${process.env.URL}/${username}/`;
 
-    this.index = argv.index;
+      page.removeAllListeners("request");
 
+      page.on("request", (request) => {
+        this.onRequest(
+          request,
+          this.currentPageFilesNumber[index],
+          this.currentInputDirectories[index],
+          index
+        );
+      });
+
+      await page.goto(url);
+    }
+    await page.bringToFront();
+
+    logger.info("Current downloads", {
+      metadata: {
+        username,
+        index,
+        downloads: this.currentPageFilesNumber[index].size,
+      },
+    });
+    if (!this.HAD_NEW_REQUEST[index]) {
+      if (this.currentPageFilesNumber[index].size === 0) {
+        return undefined;
+      }
+      return this.currentInputDirectories[index];
+    }
+    this.HAD_NEW_REQUEST[index] = false;
+    if (this.currentPageFilesNumber[index].size === 0) {
+      return undefined;
+    }
+    return this.currentInputDirectories[index];
+  };
+
+  launch = async (): Promise<void> => {
     while (true) {
       const browser: Browser = await puppeteer.launch({
         defaultViewport: { width: 1920, height: 1080 },
@@ -165,74 +209,57 @@ class Crawler {
           "--disable-gpu",
         ],
       });
-      const [page] = await browser.pages();
-
-      let outputFileName = argv.name ? argv.name : await findPerson(this.index);
-
-      while (!outputFileName) {
-        logger.info("No username found, retrying...", { index: this.index });
-        await setTimeout(120_000);
-        outputFileName = await findPerson(this.index);
-      }
-
-      const inputDirectory = `${outputFileName}-${formatDate(new Date())}`;
-
-      await page.setRequestInterception(true);
-
-      const fileNumbers: Set<number> = new Set();
-
-      // Event listener for intercepted requests
-      page.on("request", (request) => {
-        this.onRequest(request, fileNumbers, inputDirectory);
-      });
-
+      await browser.newPage();
+      const [page, page2] = await browser.pages();
       this.interactions();
 
-      const url = `${process.env.URL}/${outputFileName}/`;
+      await page.setRequestInterception(true);
+      await page2.setRequestInterception(true);
 
-      await page.goto(url);
-
-      if (argv.minutes) {
-        logger.info(`Page ${url} loaded successfully`, { index: this.index });
-        await setTimeout(60_000 * Number(argv.minutes));
-      } else {
-        this.HAD_NEW_REQUEST = true;
-        while (this.HAD_NEW_REQUEST && !this.SHOULD_STOP) {
-          const newName = await findPerson(this.index);
-          if (newName && newName !== outputFileName) {
-            break;
-          }
-
-          logger.info(
-            `Waiting for new requests, currently ${fileNumbers.size} downloaded of ${outputFileName}...`,
-            { index: this.index, metadata: { username: outputFileName } }
-          );
-          this.HAD_NEW_REQUEST = false;
-          await setTimeout(60_000 * 5);
-        }
-
-        logger.info("No new requests or name in order changed, closing...", {
-          index: this.index,
-          metadata: { outputFileName },
-        });
+      let minutesElapsed = 0;
+      let outputFileDirs: (string | undefined)[] = [];
+      while (!this.SHOULD_STOP && minutesElapsed < 60) {
+        outputFileDirs.push(
+          ...compact(
+            await Promise.all([
+              this.handleTab(page, 0),
+              this.handleTab(page2, 1),
+            ])
+          )
+        );
+        outputFileDirs = uniq(outputFileDirs);
+        logger.info("Waiting for new requests");
+        await setTimeout(60_000 * 5);
+        minutesElapsed += 5;
       }
 
       await browser.close();
 
-      logger.info("Browser closed", { index: this.index });
+      this.reset();
 
-      if (fileNumbers.size === 0) {
-        logger.info("No files downloaded, retrying...", { index: this.index });
-        continue;
+      for (const outputDirectory of outputFileDirs) {
+        if (!outputDirectory) {
+          continue;
+        }
+        const inputDirectory = path.join(process.cwd(), outputDirectory);
+        const outputFileName = path.basename(outputDirectory);
+        await removeEmptyFiles(inputDirectory);
+        const fileListPath = generateFileList(inputDirectory);
+        await this.concatVideos(
+          fileListPath,
+          outputFileName,
+          inputDirectory,
+          0
+        );
       }
-      const fileListPath = generateFileList(inputDirectory);
-      await this.concatVideos(fileListPath, outputFileName, inputDirectory, 0);
-      // Delete the filelist.txt file
 
       if (this.SHOULD_STOP) {
         break;
       }
+
+      logger.info("Browser closed");
     }
+
     process.exit();
   };
 }

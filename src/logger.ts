@@ -30,6 +30,7 @@ const logger: Logger = createLogger({
     new LokiTransport({
       host: process.env.LOKI_ENDPOINT,
       json: true,
+      format: customFormat
     }),
   ],
 });

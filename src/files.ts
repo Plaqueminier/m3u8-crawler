@@ -33,3 +33,22 @@ export const generateFileList = (inputDir: string): string => {
   fs.writeFileSync(fileListPath, fileListContent);
   return fileListPath;
 };
+
+export const removeEmptyFiles = async (folderPath: string): Promise<void> => {
+  try {
+    const files = await fs.promises.readdir(folderPath);
+
+    const removeFilePromises = files.map(async (file) => {
+      const filePath = path.join(folderPath, file);
+      const stat = await fs.promises.stat(filePath);
+
+      if (stat.isFile() && stat.size === 0) {
+        await fs.promises.unlink(filePath);
+      }
+    });
+
+    await Promise.all(removeFilePromises);
+  } catch (error) {
+    logger.error("Error removing empty files:", error);
+  }
+};
