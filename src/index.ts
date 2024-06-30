@@ -209,22 +209,26 @@ class Crawler {
           "--disable-gpu",
         ],
       });
-      await browser.newPage();
-      const [page, page2] = await browser.pages();
+      const pageNb = Number(process.argv[2]) || 2;
+      for (let i = 1; i < pageNb; i++) {
+        await browser.newPage();
+      }
+
+      const pages = await browser.pages();
       this.interactions();
 
-      await page.setRequestInterception(true);
-      await page2.setRequestInterception(true);
+      for (const page of pages) {
+        await page.setRequestInterception(true);
+      }
 
       let minutesElapsed = 0;
       let outputFileDirs: (string | undefined)[] = [];
       while (!this.SHOULD_STOP && minutesElapsed < 60) {
         outputFileDirs.push(
           ...compact(
-            await Promise.all([
-              this.handleTab(page, 0),
-              this.handleTab(page2, 1),
-            ])
+            await Promise.all(
+              pages.map((page, index) => this.handleTab(page, index))
+            )
           )
         );
         outputFileDirs = uniq(outputFileDirs);

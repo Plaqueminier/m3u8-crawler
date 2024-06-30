@@ -25,7 +25,7 @@ const s3Client = new S3Client({
 
 async function uploadFile(filePath: string): Promise<void> {
   const fileStream = fs.createReadStream(filePath);
-  const fileName = `${path.basename(filePath).slice(0, -24)}/${path.basename(
+  const fileName = `${path.basename(filePath).slice(0, -44)}/${path.basename(
     filePath
   )}`;
 
