@@ -145,17 +145,21 @@ class Crawler {
     const username = await findPerson(index);
     if (username !== this.currentUsernames[index]) {
       if (!username) {
-        logger.info("No username found, retrying in 5min...", { index });
-        if (this.currentPageFilesNumber[index].size === 0) {
-          return undefined;
-        }
-        return this.currentInputDirectories[index];
+        logger.warn("No username found, retrying in 5min...", { index });
+        return this.currentPageFilesNumber[index].size === 0
+          ? undefined
+          : this.currentInputDirectories[index];
       }
       const inputDirectory = `${username}-${formatDate(new Date())}`;
       this.currentInputDirectories[index] = inputDirectory;
       this.currentUsernames[index] = username;
       this.currentPageFilesNumber[index] = new Set();
       const url = `${process.env.URL}/${username}/`;
+
+      logger.info("Creating new directory", {
+        index,
+        metadata: { inputDirectory },
+      });
 
       page.removeAllListeners("request");
 
@@ -170,7 +174,12 @@ class Crawler {
 
       await page.goto(url);
     }
-    await page.bringToFront();
+
+    try {
+      await page.bringToFront();
+    } catch {
+      logger.warn("Error while bringing tab to front", { index });
+    }
 
     logger.info("Current downloads", {
       metadata: {
@@ -180,16 +189,14 @@ class Crawler {
       },
     });
     if (!this.HAD_NEW_REQUEST[index]) {
-      if (this.currentPageFilesNumber[index].size === 0) {
-        return undefined;
-      }
-      return this.currentInputDirectories[index];
+      return this.currentPageFilesNumber[index].size === 0
+        ? undefined
+        : this.currentInputDirectories[index];
     }
     this.HAD_NEW_REQUEST[index] = false;
-    if (this.currentPageFilesNumber[index].size === 0) {
-      return undefined;
-    }
-    return this.currentInputDirectories[index];
+    return this.currentPageFilesNumber[index].size === 0
+      ? undefined
+      : this.currentInputDirectories[index];
   };
 
   launch = async (): Promise<void> => {
@@ -223,24 +230,23 @@ class Crawler {
 
       let minutesElapsed = 0;
       let outputFileDirs: (string | undefined)[] = [];
-      while (!this.SHOULD_STOP && minutesElapsed < 60) {
-        outputFileDirs.push(
-          ...compact(
-            await Promise.all(
-              pages.map((page, index) => this.handleTab(page, index))
-            )
-          )
+      while (!this.SHOULD_STOP && minutesElapsed < 120) {
+        const tabResults = await Promise.all(
+          pages.map((page, index) => this.handleTab(page, index))
         );
+        logger.info("Tab results", { metadata: { tabResults } });
+        outputFileDirs.push(...compact(tabResults));
         outputFileDirs = uniq(outputFileDirs);
         logger.info("Waiting for new requests");
-        await setTimeout(60_000 * 5);
-        minutesElapsed += 5;
+        await setTimeout(60_000 * 10);
+        minutesElapsed += 10;
       }
 
       await browser.close();
 
       this.reset();
 
+      logger.info("Start creating videos...", { metadata: { outputFileDirs } });
       for (const outputDirectory of outputFileDirs) {
         if (!outputDirectory) {
           continue;
