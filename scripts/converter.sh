@@ -15,17 +15,6 @@ process_files() {
       # Output file name
       OUTPUT="$DIRECTORY/$BASENAME.mp4"
 
-      file_size=$(stat --format="%s" "$FILE")
-
-      local max_size=$((60 * 1024 * 1024)) # 60MB in bytes
-
-      if [ "$file_size" -lt "$max_size" ]; then
-        rm "$file_path"
-        echo "Deleted $file_path (size: $file_size bytes)"
-      else
-        echo "Skipped $file_path (size: $file_size bytes)"
-      fi
-
       if [[ ! -f "$OUTPUT" ]]; then
         # Run ffmpeg command
         ffmpeg -i "$FILE" -vf scale=1280:720 -c:v libx264 -crf 28 -preset medium -c:a aac -threads 1 "$OUTPUT"

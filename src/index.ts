@@ -146,9 +146,7 @@ class Crawler {
     if (username !== this.currentUsernames[index]) {
       if (!username) {
         logger.warn("No username found, retrying in 5min...", { index });
-        return this.currentPageFilesNumber[index].size === 0
-          ? undefined
-          : this.currentInputDirectories[index];
+        return this.currentInputDirectories[index];
       }
       const inputDirectory = `${username}-${formatDate(new Date())}`;
       this.currentInputDirectories[index] = inputDirectory;
@@ -189,14 +187,10 @@ class Crawler {
       },
     });
     if (!this.HAD_NEW_REQUEST[index]) {
-      return this.currentPageFilesNumber[index].size === 0
-        ? undefined
-        : this.currentInputDirectories[index];
+      return this.currentInputDirectories[index];
     }
     this.HAD_NEW_REQUEST[index] = false;
-    return this.currentPageFilesNumber[index].size === 0
-      ? undefined
-      : this.currentInputDirectories[index];
+    return this.currentInputDirectories[index];
   };
 
   launch = async (): Promise<void> => {
@@ -266,8 +260,6 @@ class Crawler {
       if (this.SHOULD_STOP) {
         break;
       }
-
-      logger.info("Browser closed");
     }
 
     process.exit();
