@@ -109,33 +109,12 @@ class Crawler {
   };
 
   interactions = (): void => {
-    // Create an instance of EventEmitter
-    const eventEmitter = new EventEmitter();
-
-    // Define a custom event listener
-    eventEmitter.on("keyPress", (key) => {
-      if (key === "q") {
+    process.on("message", (msg) => {
+      if (msg === "shutdown") {
         this.SHOULD_STOP = true;
-        logger.info("Exiting after 5 minutes maximum...");
+        logger.info("Exiting after 10 minutes maximum...");
       }
     });
-
-    const handleKeyPress = (key: string): void => {
-      if (key === "\u0003") {
-        // Ctrl+C
-        logger.info("Exiting...");
-        process.exit();
-      } else {
-        eventEmitter.emit("keyPress", key);
-      }
-    };
-
-    // Set up stdin to listen for key presses
-    process.stdin.setRawMode(true);
-    process.stdin.resume();
-    process.stdin.setEncoding("utf8");
-
-    process.stdin.on("data", handleKeyPress);
   };
 
   handleTab = async (
@@ -246,6 +225,9 @@ class Crawler {
           continue;
         }
         const inputDirectory = path.join(process.cwd(), outputDirectory);
+        if (!fs.existsSync(inputDirectory)) {
+          continue;
+        }
         const outputFileName = path.basename(outputDirectory);
         await removeEmptyFiles(inputDirectory);
         const fileListPath = generateFileList(inputDirectory);
