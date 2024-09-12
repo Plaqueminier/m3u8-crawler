@@ -136,9 +136,9 @@ class Crawler {
             metadata: { username },
           }
         );
-        inputDirectory = this.outputFileDirs.find((dir) =>
-          dir?.includes(username)
-        ) || inputDirectory;
+        inputDirectory =
+          this.outputFileDirs.find((dir) => dir?.includes(username)) ||
+          inputDirectory;
       }
       this.currentInputDirectories[index] = inputDirectory;
       this.currentUsernames[index] = username;
@@ -222,7 +222,9 @@ class Crawler {
         logger.info("Tab results", { metadata: { tabResults } });
         this.outputFileDirs.push(...compact(tabResults));
         this.outputFileDirs = uniq(this.outputFileDirs);
-        logger.info("Waiting for new requests");
+        logger.info("Waiting for new requests", {
+          metadata: { dirs: this.outputFileDirs },
+        });
         await setTimeout(60_000 * 10);
         minutesElapsed += 10;
       }
