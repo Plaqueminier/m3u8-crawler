@@ -3,7 +3,6 @@ import fs from "fs";
 import puppeteer, { Browser, HTTPRequest, Page } from "puppeteer";
 import { findPerson } from "./scraper";
 import { setTimeout } from "timers/promises";
-import EventEmitter from "events";
 import { formatDate } from "./utils";
 import {
   deleteTmpFiles,
@@ -22,6 +21,8 @@ class Crawler {
   currentUsernames: string[] = ["", ""];
   currentInputDirectories: string[] = ["", ""];
   currentPageFilesNumber: Set<number>[] = [new Set(), new Set()];
+
+  outputFileDirs: (string | undefined)[] = [];
 
   reset = (): void => {
     this.currentUsernames = ["", ""];
@@ -127,13 +128,24 @@ class Crawler {
         logger.warn("No username found, retrying in 5min...", { index });
         return this.currentInputDirectories[index];
       }
-      const inputDirectory = `${username}-${formatDate(new Date())}`;
+      let inputDirectory = `${username}-${formatDate(new Date())}`;
+      if (this.outputFileDirs.some((dir) => dir?.includes(username))) {
+        logger.info(
+          "Username already processed, not creating new directory...",
+          {
+            metadata: { username },
+          }
+        );
+        inputDirectory = this.outputFileDirs.find((dir) =>
+          dir?.includes(username)
+        ) || inputDirectory;
+      }
       this.currentInputDirectories[index] = inputDirectory;
       this.currentUsernames[index] = username;
       this.currentPageFilesNumber[index] = new Set();
       const url = `${process.env.URL}/${username}/`;
 
-      logger.info("Creating new directory", {
+      logger.info("Using directory", {
         index,
         metadata: { inputDirectory },
       });
@@ -202,14 +214,14 @@ class Crawler {
       }
 
       let minutesElapsed = 0;
-      let outputFileDirs: (string | undefined)[] = [];
+      this.outputFileDirs = [];
       while (!this.SHOULD_STOP && minutesElapsed < 120) {
         const tabResults = await Promise.all(
           pages.map((page, index) => this.handleTab(page, index))
         );
         logger.info("Tab results", { metadata: { tabResults } });
-        outputFileDirs.push(...compact(tabResults));
-        outputFileDirs = uniq(outputFileDirs);
+        this.outputFileDirs.push(...compact(tabResults));
+        this.outputFileDirs = uniq(this.outputFileDirs);
         logger.info("Waiting for new requests");
         await setTimeout(60_000 * 10);
         minutesElapsed += 10;
@@ -219,8 +231,10 @@ class Crawler {
 
       this.reset();
 
-      logger.info("Start creating videos...", { metadata: { outputFileDirs } });
-      for (const outputDirectory of outputFileDirs) {
+      logger.info("Start creating videos...", {
+        metadata: { outputFileDirs: this.outputFileDirs },
+      });
+      for (const outputDirectory of this.outputFileDirs) {
         if (!outputDirectory) {
           continue;
         }
