@@ -11,10 +11,11 @@ const customFormat = format.combine(
   }),
   format.printf((info) => {
     const logEntry = {
+      app: "m3u8-crawler",
       timestamp: info.timestamp,
       level: info.level,
       message: info.message,
-      index: info.index, // Include index if present
+      index: info.index,
       ...(info.metadata && { metadata: info.metadata }), // Include meta if present
     };
     return JSON.stringify(logEntry, null, 2); // Pretty-print with 2 spaces of indentation
