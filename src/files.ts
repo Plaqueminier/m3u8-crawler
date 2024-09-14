@@ -42,7 +42,7 @@ export const removeEmptyFiles = async (folderPath: string): Promise<void> => {
       const filePath = path.join(folderPath, file);
       const stat = await fs.promises.stat(filePath);
 
-      if (stat.isFile() && stat.size === 0) {
+      if (stat.isFile() && stat.size < 1000) {
         await fs.promises.unlink(filePath);
       }
     });

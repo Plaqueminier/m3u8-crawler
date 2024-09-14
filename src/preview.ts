@@ -48,7 +48,11 @@ async function listVideos(): Promise<string[]> {
     const contents = response.Contents || [];
 
     for (const object of contents) {
-      if (object.Key && object.Key.toLowerCase().endsWith(".mp4")) {
+      if (
+        object.Key &&
+        object.Key.toLowerCase().endsWith(".mp4") &&
+        !object.Key.startsWith("previews/")
+      ) {
         videoKeys.push(object.Key);
       }
     }
