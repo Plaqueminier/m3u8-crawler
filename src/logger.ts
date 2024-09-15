@@ -31,7 +31,8 @@ const logger: Logger = createLogger({
     new LokiTransport({
       host: process.env.LOKI_ENDPOINT,
       json: true,
-      format: customFormat
+      format: customFormat,
+      labels: { app: "m3u8-crawler", level: "info" },
     }),
   ],
 });
