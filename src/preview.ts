@@ -97,7 +97,7 @@ async function createPreview(inputPath: string): Promise<string[]> {
 
 export async function processVideo(videoKey: string): Promise<void> {
   logger.info(`Processing video: ${videoKey}`);
-  const localPath = `temp_${path.basename(videoKey)}`;
+  const localPath = `videos/${path.basename(videoKey)}`;
 
   try {
     const segmentFiles = await createPreview(localPath);
