@@ -111,8 +111,6 @@ export async function processVideo(videoKey: string): Promise<void> {
       await uploadFile(segmentFile, segmentKey);
       fs.unlinkSync(segmentFile);
     }
-
-    fs.unlinkSync(localPath);
     logger.info(`Finished processing ${videoKey}`);
   } catch (error) {
     logger.error(`Error processing ${videoKey}:`, error);
