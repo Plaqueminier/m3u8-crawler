@@ -1,9 +1,4 @@
-import {
-  S3Client,
-  GetObjectCommand,
-  ListObjectsV2Command,
-  HeadObjectCommand,
-} from "@aws-sdk/client-s3";
+import { S3Client } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import dotenv from "dotenv";
 import fs from "fs";
@@ -11,7 +6,6 @@ import path from "path";
 import { promisify } from "util";
 import { exec } from "child_process";
 import logger from "./logger";
-import { Readable } from "stream";
 
 dotenv.config();
 
@@ -33,94 +27,6 @@ const s3Client = new S3Client({
     secretAccessKey: SECRET_ACCESS_KEY,
   },
 });
-
-async function listVideos(): Promise<string[]> {
-  const videoKeys: string[] = [];
-  let continuationToken: string | undefined;
-
-  do {
-    const command = new ListObjectsV2Command({
-      Bucket: BUCKET_NAME,
-      ContinuationToken: continuationToken,
-    });
-
-    const response = await s3Client.send(command);
-    const contents = response.Contents || [];
-
-    for (const object of contents) {
-      if (
-        object.Key &&
-        object.Key.toLowerCase().endsWith(".mp4") &&
-        !object.Key.startsWith("previews/")
-      ) {
-        videoKeys.push(object.Key);
-      }
-    }
-
-    continuationToken = response.NextContinuationToken;
-  } while (continuationToken);
-
-  return videoKeys;
-}
-
-async function checkPreviewExists(videoKey: string): Promise<boolean> {
-  const previewKey = `previews/${path.basename(
-    videoKey,
-    ".mp4"
-  )}/segment_01.mp4`;
-  try {
-    await s3Client.send(
-      new HeadObjectCommand({
-        Bucket: BUCKET_NAME,
-        Key: previewKey,
-      })
-    );
-    return true;
-  } catch {
-    logger.info(`No preview for ${videoKey}:`);
-    return false;
-  }
-}
-
-async function downloadFile(key: string, outputPath: string): Promise<void> {
-  const headCommand = new HeadObjectCommand({
-    Bucket: BUCKET_NAME,
-    Key: key,
-  });
-
-  const headResponse = await s3Client.send(headCommand);
-  const totalSize = headResponse.ContentLength ?? 0;
-
-  const command = new GetObjectCommand({
-    Bucket: BUCKET_NAME,
-    Key: key,
-  });
-
-  const { Body } = await s3Client.send(command);
-  const writer = fs.createWriteStream(outputPath);
-
-  let downloadedBytes = 0;
-  let lastLoggedPercent = 0;
-
-  return new Promise((resolve, reject) => {
-    if (Body instanceof Readable) {
-      Body.on("data", (chunk: Buffer) => {
-        downloadedBytes += chunk.length;
-        const percent = Math.round((downloadedBytes / totalSize) * 100);
-
-        // Log progress every 5%
-        if (percent >= lastLoggedPercent + 5) {
-          logger.info(`Downloading ${key}: ${percent}% complete`);
-          lastLoggedPercent = percent;
-        }
-      });
-
-      Body.pipe(writer);
-      writer.on("finish", resolve);
-      writer.on("error", reject);
-    }
-  });
-}
 
 async function uploadFile(filePath: string, key: string): Promise<void> {
   const fileStream = fs.createReadStream(filePath);
@@ -144,7 +50,7 @@ async function uploadFile(filePath: string, key: string): Promise<void> {
   }
 }
 
-async function processVideo(inputPath: string): Promise<string[]> {
+async function createPreview(inputPath: string): Promise<string[]> {
   const outputFiles: string[] = [];
   const segmentDuration = 30;
   const numSegments = 10;
@@ -189,58 +95,26 @@ async function processVideo(inputPath: string): Promise<string[]> {
   return outputFiles;
 }
 
-async function processAllVideos(): Promise<void> {
+export async function processVideo(videoKey: string): Promise<void> {
+  logger.info(`Processing video: ${videoKey}`);
+  const localPath = `temp_${path.basename(videoKey)}`;
+
   try {
-    const videoKeys = await listVideos();
-    logger.info(`Found ${videoKeys.length} videos in total.`);
+    const segmentFiles = await createPreview(localPath);
 
-    for (const videoKey of videoKeys) {
-      logger.info(`Checking video: ${videoKey}`);
-
-      // Check if preview exists just before processing
-      const previewExists = await checkPreviewExists(videoKey);
-      if (previewExists) {
-        logger.info(`Skipping ${videoKey}: Preview already exists`);
-        continue;
-      }
-
-      logger.info(`Processing video: ${videoKey}`);
-      const localPath = `temp_${path.basename(videoKey)}`;
-
-      try {
-        // Download the video from R2
-        logger.info(`Starting download of ${videoKey}...`);
-        await downloadFile(videoKey, localPath);
-        logger.info(`Download of ${videoKey} complete.`);
-
-        // Process the video
-        logger.info("Processing video...");
-        const segmentFiles = await processVideo(localPath);
-
-        // Upload segments back to R2
-        logger.info("Uploading segments...");
-        for (const segmentFile of segmentFiles) {
-          const segmentKey = `previews/${path.basename(
-            videoKey,
-            ".mp4"
-          )}/${segmentFile}`;
-          await uploadFile(segmentFile, segmentKey);
-          fs.unlinkSync(segmentFile); // Delete local segment file after upload
-        }
-
-        // Clean up
-        fs.unlinkSync(localPath);
-        logger.info(`Finished processing ${videoKey}`);
-      } catch (error) {
-        logger.error(`Error processing ${videoKey}:`, error);
-      }
+    logger.info("Uploading segments...");
+    for (const segmentFile of segmentFiles) {
+      const segmentKey = `previews/${path.basename(
+        videoKey,
+        ".mp4"
+      )}/${segmentFile}`;
+      await uploadFile(segmentFile, segmentKey);
+      fs.unlinkSync(segmentFile);
     }
-    logger.info("All videos processed successfully!");
-    process.exit(0);
+
+    fs.unlinkSync(localPath);
+    logger.info(`Finished processing ${videoKey}`);
   } catch (error) {
-    logger.error("An error occurred while processing videos:", error);
-    process.exit(1);
+    logger.error(`Error processing ${videoKey}:`, error);
   }
 }
-
-processAllVideos();

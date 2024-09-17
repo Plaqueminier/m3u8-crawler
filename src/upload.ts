@@ -4,6 +4,7 @@ import { S3Client } from "@aws-sdk/client-s3";
 import dotenv from "dotenv";
 import { Upload } from "@aws-sdk/lib-storage";
 import path from "path";
+import { processVideo } from "./preview";
 dotenv.config();
 
 // Load environment variables
@@ -66,6 +67,7 @@ async function uploadFile(filePath: string): Promise<void> {
       },
     });
     fileStream.close();
+    await processVideo(fileName);
     process.exit();
   } catch (err) {
     logger.error("Error uploading file:", { metadata: err });

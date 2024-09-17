@@ -75,11 +75,12 @@ class Crawler {
     attempt: number
   ): Promise<void> => {
     try {
-      logger.info("Starting ffmpeg...");
-      // Concatenate the files using ffmpeg
+      logger.info("Starting ffmpeg...", { metadata: { inputDirectory, outputFile } });
       try {
         const realFileName = await runFFmpeg(fileListPath, outputFile);
-        logger.info("ts file created successfully");
+        logger.info("ts file created successfully", {
+          metadata: { outputFile },
+        });
         const sourcePath = path.join(realFileName);
         const destinationPath = path.join("videos", realFileName);
         logger.info("Moving file to videos folder...", {

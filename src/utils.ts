@@ -2,7 +2,7 @@ import { exec } from "child_process";
 import logger from "./logger";
 
 export function formatDate(date: Date): string {
-  const pad = (n: number) => ("0" + n).slice(-2);
+  const pad = (n: number): string => ("0" + n).slice(-2);
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
     date.getDate()
   )}_${pad(date.getHours())}-${pad(date.getMinutes())}-${pad(
