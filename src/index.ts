@@ -175,7 +175,7 @@ class Crawler {
       metadata: {
         username,
         index,
-        downloads: this.currentPageFilesNumber[index].size,
+        downloads: this.currentPageFilesNumber[index]?.size ?? 0,
       },
     });
     if (!this.HAD_NEW_REQUEST[index]) {
