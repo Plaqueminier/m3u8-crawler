@@ -169,7 +169,6 @@ class Crawler {
 
     try {
       await page.bringToFront();
-      await setTimeout(100);
     } catch {
       logger.warn("Error while bringing tab to front", { index });
     }
@@ -206,6 +205,7 @@ class Crawler {
         ],
       });
       const pageNb = Number(process.argv[2]) || 2;
+      this.reset(pageNb);
       for (let i = 1; i < pageNb; i++) {
         await browser.newPage();
       }
