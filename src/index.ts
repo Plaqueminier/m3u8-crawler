@@ -167,6 +167,7 @@ class Crawler {
 
     try {
       await page.bringToFront();
+      await setTimeout(500);
     } catch {
       logger.warn("Error while bringing tab to front", { index });
     }
