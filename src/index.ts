@@ -18,16 +18,16 @@ class Crawler {
   MAX_ATTEMPTS = 3;
   SHOULD_STOP = false;
 
-  currentUsernames: string[] = ["", ""];
-  currentInputDirectories: string[] = ["", ""];
-  currentPageFilesNumber: Set<number>[] = [new Set(), new Set()];
+  currentUsernames: string[] = [];
+  currentInputDirectories: string[] = [];
+  currentPageFilesNumber: Set<number>[] = [];
 
   outputFileDirs: (string | undefined)[] = [];
 
-  reset = (): void => {
-    this.currentUsernames = ["", ""];
-    this.currentInputDirectories = ["", ""];
-    this.currentPageFilesNumber = [new Set(), new Set()];
+  reset = (pageNb: number): void => {
+    this.currentUsernames = new Array(pageNb).fill("");
+    this.currentInputDirectories = new Array(pageNb).fill("");
+    this.currentPageFilesNumber = new Array(pageNb).fill(new Set());
   };
 
   onRequest = async (
@@ -75,7 +75,9 @@ class Crawler {
     attempt: number
   ): Promise<void> => {
     try {
-      logger.info("Starting ffmpeg...", { metadata: { inputDirectory, outputFile } });
+      logger.info("Starting ffmpeg...", {
+        metadata: { inputDirectory, outputFile },
+      });
       try {
         const realFileName = await runFFmpeg(fileListPath, outputFile);
         logger.info("ts file created successfully", {
@@ -167,7 +169,7 @@ class Crawler {
 
     try {
       await page.bringToFront();
-      await setTimeout(500);
+      await setTimeout(100);
     } catch {
       logger.warn("Error while bringing tab to front", { index });
     }
@@ -233,7 +235,7 @@ class Crawler {
 
       await browser.close();
 
-      this.reset();
+      this.reset(pageNb);
 
       logger.info("Start creating videos...", {
         metadata: { outputFileDirs: this.outputFileDirs },
