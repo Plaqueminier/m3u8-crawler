@@ -1,7 +1,10 @@
+import { compact } from "lodash";
 import logger from "./logger";
 
-const list = [
+const list: { username: string; rank: number }[] = [
 ];
+
+const listNotInApi: string[] = [];
 
 interface ApiType {
   username: string;
@@ -19,6 +22,27 @@ export const findPerson = async (
   index: number
 ): Promise<string | undefined> => {
   const infos = await fetch(process.env.API_URL ?? "https://api.example.com");
+  const infosNotInApi = compact(
+    await Promise.all(
+      listNotInApi.map(async (name) => {
+        const res = await (
+          await fetch(
+            `${
+              process.env.API_URL_NOT_IN_API ?? "https://api.example.com"
+            }/${name}`
+          )
+        ).json();
+        if (res.template === "image_template") {
+          return {
+            username: name,
+            numUsers: 3000,
+            currentShow: "public",
+          };
+        }
+        return undefined;
+      })
+    )
+  );
 
   try {
     const jsonRes: OutputType[] = (await infos.json()).results.map(
@@ -30,7 +54,7 @@ export const findPerson = async (
     );
     const loggedIn = [];
     for (const person of list) {
-      const loggedInPerson = jsonRes.find(
+      const loggedInPerson = [...jsonRes, ...infosNotInApi].find(
         (logged) =>
           logged.username === person.username && logged.currentShow === "public"
       );
