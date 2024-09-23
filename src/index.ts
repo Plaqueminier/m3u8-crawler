@@ -24,6 +24,8 @@ class Crawler {
 
   outputFileDirs: (string | undefined)[] = [];
 
+  offset = 0;
+
   reset = (pageNb: number): void => {
     this.currentUsernames = new Array(pageNb).fill("");
     this.currentInputDirectories = new Array(pageNb).fill("");
@@ -125,10 +127,10 @@ class Crawler {
     page: Page,
     index: number
   ): Promise<string | undefined> => {
-    const username = await findPerson(index);
+    const username = await findPerson(index + this.offset);
     if (username !== this.currentUsernames[index]) {
       if (!username) {
-        logger.warn("No username found, retrying in 5min...", { index });
+        logger.warn("No username found, retrying in 5min...", { index: index + this.offset });
         return this.currentInputDirectories[index];
       }
       let inputDirectory = `${username}-${formatDate(new Date())}`;
@@ -149,7 +151,7 @@ class Crawler {
       const url = `${process.env.URL}/${username}/`;
 
       logger.info("Using directory", {
-        index,
+        index: index + this.offset,
         metadata: { inputDirectory },
       });
 
@@ -170,13 +172,13 @@ class Crawler {
     try {
       await page.bringToFront();
     } catch {
-      logger.warn("Error while bringing tab to front", { index });
+      logger.warn("Error while bringing tab to front", { index: index + this.offset });
     }
 
     logger.info("Current downloads", {
       metadata: {
         username,
-        index,
+        index: index + this.offset,
         downloads: this.currentPageFilesNumber[index]?.size ?? 0,
       },
     });
@@ -204,6 +206,7 @@ class Crawler {
           "--disable-gpu",
         ],
       });
+      this.offset = Number(process.argv[3]) || 0;
       const pageNb = Number(process.argv[2]) || 2;
       this.reset(pageNb);
       for (let i = 1; i < pageNb; i++) {
