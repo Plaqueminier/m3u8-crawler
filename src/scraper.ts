@@ -32,7 +32,7 @@ export const findPerson = async (
             }/${name}`
           )
         ).json();
-        if (res.template === "image_template") {
+        if (res.room_status === "online") {
           return {
             username: name,
             numUsers: 3000,
