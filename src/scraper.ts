@@ -25,21 +25,29 @@ export const findPerson = async (
   const infosNotInApi = compact(
     await Promise.all(
       listNotInApi.map(async (name) => {
-        const res = await (
-          await fetch(
-            `${
-              process.env.API_URL_NOT_IN_API ?? "https://api.example.com"
-            }/${name}`
-          )
-        ).json();
-        if (res.room_status === "online") {
-          return {
-            username: name,
-            numUsers: 3000,
-            currentShow: "public",
-          };
+        try {
+          const res = await (
+            await fetch(
+              `${
+                process.env.API_URL_NOT_IN_API ?? "https://api.example.com"
+              }/${name}`
+            )
+          ).json();
+          if (res.room_status === "online") {
+            return {
+              username: name,
+              numUsers: 3000,
+              currentShow: "public",
+            };
+          }
+          return undefined;
+        } catch (e) {
+          logger.error("Error fetching data", {
+            index,
+            metadata: { error: e, name },
+          });
+          return undefined;
         }
-        return undefined;
       })
     )
   );
