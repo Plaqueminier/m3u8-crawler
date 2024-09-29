@@ -127,6 +127,7 @@ class Crawler {
     page: Page,
     index: number
   ): Promise<string | undefined> => {
+    let firstTime = false;
     const username = await findPerson(index + this.offset);
     if (username !== this.currentUsernames[index]) {
       if (!username) {
@@ -167,10 +168,12 @@ class Crawler {
       });
 
       await page.goto(url);
+      firstTime = true;
     }
 
     try {
       await page.bringToFront();
+      await setTimeout(5000);
     } catch {
       logger.warn("Error while bringing tab to front", { index: index + this.offset });
     }
@@ -182,7 +185,11 @@ class Crawler {
         downloads: this.currentPageFilesNumber[index]?.size ?? 0,
       },
     });
-    if (!this.HAD_NEW_REQUEST[index]) {
+    if (!this.HAD_NEW_REQUEST[index] && !firstTime) {
+      logger.info("No new requests, reloading page...", {
+        index: index + this.offset,
+      });
+      page.reload();
       return this.currentInputDirectories[index];
     }
     this.HAD_NEW_REQUEST[index] = false;

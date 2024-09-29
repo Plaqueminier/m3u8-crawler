@@ -33,7 +33,7 @@ export const findPerson = async (
               }/${name}`
             )
           ).json();
-          if (res.room_status === "online") {
+          if (res.room_status === "public") {
             return {
               username: name,
               numUsers: 3000,
