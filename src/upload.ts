@@ -5,6 +5,8 @@ import dotenv from "dotenv";
 import { Upload } from "@aws-sdk/lib-storage";
 import path from "path";
 import { processVideo } from "./preview";
+import { open } from "sqlite";
+import sqlite3 from "sqlite3";
 dotenv.config();
 
 // Load environment variables
@@ -23,6 +25,19 @@ const s3Client = new S3Client({
     secretAccessKey: SECRET_ACCESS_KEY,
   },
 });
+
+async function uploadFileInDb(name: string, fileName: string, size: number): Promise<void> {
+  const db = await open({
+    filename: process.env.DATABASE_PATH!,
+    driver: sqlite3.Database,
+  });
+
+  const response = await db.run(
+    "INSERT INTO videos (name, key, size, lastModified) VALUES (?, ?, ?, ?)",
+    [name, fileName, size, new Date()]
+  );
+  logger.info("File uploaded in db", { metadata: response });
+}
 
 async function uploadFile(filePath: string): Promise<void> {
   const fileStream = fs.createReadStream(filePath);
@@ -59,6 +74,7 @@ async function uploadFile(filePath: string): Promise<void> {
       },
     });
     const response = await upload.done();
+    const userName = fileName.slice(0, fileName.indexOf("/"));
     logger.info("File uploaded successfully:", {
       metadata: {
         fileName,
@@ -67,6 +83,7 @@ async function uploadFile(filePath: string): Promise<void> {
       },
     });
     fileStream.close();
+    await uploadFileInDb(userName, fileName, fileStream.bytesRead);
     await processVideo(fileName);
     process.exit();
   } catch (err) {
