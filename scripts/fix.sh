@@ -1,5 +1,6 @@
 #!/bin/bash
 
+rm *2024*.ts
 find . -maxdepth 1 -type d -not -name "*$(date '+%Y-%m-%d')*" -not -name "." -not -name "node_modules" -not -name "src" -not -name "scripts" -not -name "videos" -not -name ".git" | while read folder; do
     # Extract the base name of the folder (removing the path)
     base_folder=$(basename "$folder")
