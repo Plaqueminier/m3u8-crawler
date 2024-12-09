@@ -341,7 +341,7 @@ class URLImageProcessor:
         )
 
         self.frame_extractor = VideoFrameExtractor()
-        self.batch_size = 16  # Process images in batches
+        self.batch_size = 8  # Process images in batches
 
     def download_frames(self, url: str, output_dir: str = "temp_frames"):
         """Extract frames from video URL"""
