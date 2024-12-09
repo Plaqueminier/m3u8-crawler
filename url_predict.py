@@ -84,12 +84,10 @@ class DatabaseHandler:
                 """
                 SELECT id, key
                 FROM videos
-                WHERE prediction IS NULL
-                   OR prediction = ?
+                WHERE predictedAt < '2024-12-05 05:00:00'
                 ORDER BY id DESC
                 LIMIT 1
             """,
-                ("0" * 100,),
             )
 
             result = cursor.fetchone()
@@ -124,9 +122,9 @@ class DatabaseHandler:
 
 
 class TransferModel(nn.Module):
-    def __init__(self, pretrained=False):
+    def __init__(self, weights=None):
         super(TransferModel, self).__init__()
-        self.resnet = models.resnet18(pretrained=pretrained)
+        self.resnet = models.resnet18(weights=weights)
 
         # Add batch normalization and dropout layers
         self.resnet.layer1 = nn.Sequential(
@@ -321,7 +319,7 @@ class URLImageProcessor:
 
         # Initialize model
         self.model = TransferModel()
-        checkpoint = torch.load(model_path, map_location=self.device)
+        checkpoint = torch.load(model_path, map_location=self.device, weights_only=True)
 
         if "model_state_dict" in checkpoint:
             self.model.load_state_dict(checkpoint["model_state_dict"])
