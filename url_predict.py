@@ -84,7 +84,7 @@ class DatabaseHandler:
                 """
                 SELECT id, key
                 FROM videos
-                WHERE predictedAt < '2024-12-05 05:00:00'
+                WHERE predictedAt < '2024-12-09 00:00:00'
                 ORDER BY id DESC
                 LIMIT 1
             """,
