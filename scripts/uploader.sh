@@ -3,9 +3,6 @@
 # Directory containing the .ts files
 DIRECTORY="/root/m3u8-crawler/videos/"
 
-# Interval in seconds (20 minutes)
-INTERVAL=600
-
 # Function to process .ts files
 process_files() {
   for FILE in "$DIRECTORY"/*.mp4; do
@@ -37,9 +34,4 @@ process_files() {
   done
 }
 
-# Infinite loop to run the process every 20 minutes
-while true; do
-  process_files
-  echo "Waiting..."
-  sleep $INTERVAL
-done
+process_files

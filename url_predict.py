@@ -14,6 +14,7 @@ import time
 import boto3
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
+import psutil
 
 # Load environment variables at the start
 load_dotenv()
@@ -182,14 +183,20 @@ class VideoFrameExtractor:
         if not self.check_ffmpeg():
             return 0
 
+        self.logger.info(f"Starting frame extraction from URL: {url}")
+        self.logger.info(f"Output directory: {output_dir}")
+
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
+            self.logger.info(f"Created output directory: {output_dir}")
         else:
+            self.logger.info(f"Cleaning existing output directory: {output_dir}")
             shutil.rmtree(output_dir)
             os.makedirs(output_dir)
 
         try:
             # Get video duration first
+            self.logger.info("Executing FFprobe to get video duration...")
             duration_cmd = [
                 "ffprobe",
                 "-v",
@@ -201,111 +208,144 @@ class VideoFrameExtractor:
                 url,
             ]
 
-            self.logger.info("Getting video duration...")
             duration_output = subprocess.run(
                 duration_cmd, capture_output=True, text=True
             )
-            duration = float(duration_output.stdout.strip())
+            if duration_output.returncode != 0:
+                self.logger.error(f"FFprobe failed: {duration_output.stderr}")
+                return 0
 
+            duration = float(duration_output.stdout.strip())
             self.logger.info(f"Video duration: {duration:.2f} seconds")
 
-            # Calculate frame interval to get exactly 100 frames
-            frame_interval = (
-                duration / 100
-            )  # This will give us 100 evenly spaced frames
+            # Optimize frame extraction settings
+            cmd = [
+                "ffmpeg",
+                "-y",
+                "-loglevel",
+                "info",
+                "-i",
+                url,
+                "-vf",
+                f"fps=1/{duration / 100}",  # Extract exactly 100 frames
+                "-frame_pts",
+                "1",
+                "-frames:v",
+                "100",
+                "-threads",
+                "2",
+                "-preset",
+                "ultrafast",
+                "-tune",
+                "fastdecode",
+                "-f",
+                "image2",
+                "-qscale:v",
+                "3",
+                os.path.join(output_dir, f"frame_%03d.{format}"),
+            ]
 
-            # Create progress bar
-            with tqdm(total=100, desc="Extracting frames") as pbar:
-                # Single FFmpeg command to extract all frames at once
-                cmd = [
-                    "ffmpeg",
-                    "-i",
-                    url,
-                    "-vf",
-                    f"fps=1/{frame_interval}",  # Extract frames at calculated interval
-                    "-frame_pts",
-                    "1",
-                    "-vsync",
-                    "0",
-                    "-frames:v",
-                    "100",  # Limit to exactly 100 frames
-                    "-threads",
-                    "1",  # Limit thread usage
-                    "-preset",
-                    "ultrafast",  # Use fastest encoding preset
-                    "-f",
-                    "image2",
-                    "-qscale:v",
-                    "2",  # High quality
-                    os.path.join(output_dir, f"frame_%03d.{format}"),
-                ]
+            self.logger.info("Starting FFmpeg process with command:")
+            self.logger.info(" ".join(cmd))
 
-                # Run FFmpeg with progress monitoring
-                process = subprocess.Popen(
-                    cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    universal_newlines=True,
+            # Create process with pipe for both stdout and stderr
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                universal_newlines=True,
+                bufsize=1,
+            )
+
+            def log_output(pipe, prefix):
+                """Helper function to log output from pipes"""
+                for line in iter(pipe.readline, ""):
+                    line = line.strip()
+                    if line:
+                        if "error" in line.lower():
+                            self.logger.error(f"{prefix}: {line}")
+                        elif "warning" in line.lower():
+                            self.logger.warning(f"{prefix}: {line}")
+                        else:
+                            self.logger.info(f"{prefix}: {line}")
+
+            # Create threads to handle output logging
+            from threading import Thread
+
+            stdout_thread = Thread(target=log_output, args=(process.stdout, "FFmpeg"))
+            stderr_thread = Thread(target=log_output, args=(process.stderr, "FFmpeg"))
+
+            # Start threads
+            stdout_thread.daemon = True
+            stderr_thread.daemon = True
+            stdout_thread.start()
+            stderr_thread.start()
+
+            last_frame_count = 0
+            stall_counter = 0
+            last_progress_time = time.time()
+            start_time = time.time()
+
+            # Main processing loop
+            while process.poll() is None:
+                current_frames = len(
+                    [
+                        f
+                        for f in os.listdir(output_dir)
+                        if f.lower().endswith(f".{format}")
+                    ]
                 )
 
-                # Update progress bar while FFmpeg runs
-                while process.poll() is None:
-                    # Count current frames
-                    current_frames = len(
-                        [
-                            f
-                            for f in os.listdir(output_dir)
-                            if f.lower().endswith(f".{format}")
-                        ]
+                if current_frames != last_frame_count:
+                    frames_delta = current_frames - last_frame_count
+                    current_time = time.time()
+                    fps = frames_delta / (current_time - last_progress_time)
+                    elapsed = current_time - start_time
+
+                    self.logger.info(
+                        f"Progress: {current_frames}/100 frames "
+                        f"(+{frames_delta} frames, {fps:.1f} fps, "
+                        f"elapsed: {elapsed:.1f}s)"
                     )
-                    pbar.n = min(100, current_frames)
-                    pbar.refresh()
-                    time.sleep(0.1)
 
-                # Ensure progress bar reaches 100%
-                pbar.n = 100
-                pbar.refresh()
+                    last_frame_count = current_frames
+                    last_progress_time = current_time
+                    stall_counter = 0
+                else:
+                    stall_counter += 1
+                    if stall_counter == 30:  # Log after 3 seconds of stall
+                        self.logger.warning(
+                            f"Frame extraction stalled at {current_frames}/100 frames. "
+                            "Checking process status..."
+                        )
 
-            # Verify we got exactly 100 frames
-            frames = sorted(
+                time.sleep(0.1)
+
+            # Wait for output threads to finish
+            stdout_thread.join(timeout=1)
+            stderr_thread.join(timeout=1)
+
+            # Get final status
+            return_code = process.wait()
+            if return_code != 0:
+                self.logger.error(f"FFmpeg failed with code {return_code}")
+                return 0
+
+            final_frames = len(
                 [f for f in os.listdir(output_dir) if f.lower().endswith(f".{format}")]
             )
-            frames_saved = len(frames)
 
-            if frames_saved != 100:
-                self.logger.warning(
-                    f"Expected 100 frames but got {frames_saved} frames"
-                )
-
-                # If we got more than 100 frames, keep only the first 100
-                if frames_saved > 100:
-                    for frame in frames[100:]:
-                        os.remove(os.path.join(output_dir, frame))
-                    frames_saved = 100
-                    self.logger.info("Removed excess frames")
-
-                # If we got less than 100 frames, duplicate the last frame
-                elif frames_saved < 100:
-                    last_frame = frames[-1]
-                    for i in range(frames_saved + 1, 101):
-                        shutil.copy2(
-                            os.path.join(output_dir, last_frame),
-                            os.path.join(output_dir, f"frame_{i:03d}.{format}"),
-                        )
-                    frames_saved = 100
-                    self.logger.info("Duplicated last frame to reach 100 frames")
-
+            total_time = time.time() - start_time
             self.logger.info(
-                f"Successfully prepared {frames_saved} frames in {output_dir}"
+                f"Frame extraction completed. Total frames: {final_frames}, "
+                f"Time taken: {total_time:.1f}s, "
+                f"Average speed: {final_frames / total_time:.1f} fps"
             )
-            return frames_saved
+            return final_frames
 
-        except subprocess.CalledProcessError as e:
-            self.logger.error(f"FFmpeg error: {str(e)}")
         except Exception as e:
-            self.logger.error(f"An error occurred: {str(e)}")
-
-        return 0
+            self.logger.error(f"Frame extraction failed: {str(e)}")
+            return 0
 
 
 class URLImageProcessor:
@@ -333,7 +373,7 @@ class URLImageProcessor:
         self.transform = transforms.Compose(
             [
                 transforms.Resize(
-                    (224, 224), interpolation=transforms.InterpolationMode.BILINEAR
+                    (224, 224), interpolation=transforms.InterpolationMode.NEAREST
                 ),
                 transforms.ToTensor(),
                 transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
@@ -341,7 +381,7 @@ class URLImageProcessor:
         )
 
         self.frame_extractor = VideoFrameExtractor()
-        self.batch_size = 8  # Process images in batches
+        self.batch_size = 4  # Reduced batch size to lower memory/CPU usage
 
     def download_frames(self, url: str, output_dir: str = "temp_frames"):
         """Extract frames from video URL"""
@@ -358,25 +398,35 @@ class URLImageProcessor:
             ]
         )
 
-    @torch.no_grad()  # Ensure no gradients are computed
+    @torch.no_grad()
     def predict_batch(self, image_paths: List[str]) -> List[float]:
         """Predict a batch of images at once"""
         try:
-            # Prepare batch
+            # Process images one at a time to reduce memory usage
             batch_tensors = []
             for img_path in image_paths:
-                image = Image.open(img_path).convert("RGB")
+                # Use PIL's draft mode for faster loading
+                image = Image.open(img_path)
+                image.draft("RGB", (224, 224))
+                image = image.convert("RGB")
                 image_tensor = self.transform(image)
                 batch_tensors.append(image_tensor)
+                # Explicitly close image to free memory
+                image.close()
 
-            # Stack tensors and move to device
+            # Clear CUDA cache if using GPU
+            if self.device.type == "cuda":
+                torch.cuda.empty_cache()
+
             batch = torch.stack(batch_tensors).to(self.device)
-
-            # Run inference
             outputs = self.model(batch)
             probabilities = outputs.squeeze().cpu().numpy().tolist()
 
-            # Handle single-item case
+            # Clear variables to free memory
+            del batch_tensors
+            del batch
+            del outputs
+
             if isinstance(probabilities, float):
                 probabilities = [probabilities]
 
@@ -418,6 +468,9 @@ class URLImageProcessor:
             ]
             predictions.extend(valid_predictions)
 
+            # Add small sleep between batches to reduce CPU load
+            time.sleep(0.1)
+
         # Clean up
         shutil.rmtree(temp_dir)
 
@@ -437,6 +490,13 @@ class URLImageProcessor:
             logger.info("Truncated predictions to 100 characters")
 
         return "".join(predictions)
+
+
+def limit_cpu_usage():
+    """Limit the process to use fewer CPU cores"""
+    process = psutil.Process(os.getpid())
+    # Use only 2 CPU cores (adjust number as needed)
+    process.cpu_affinity([0])
 
 
 def main():
@@ -482,4 +542,5 @@ def main():
 
 
 if __name__ == "__main__":
+    limit_cpu_usage()
     main()
