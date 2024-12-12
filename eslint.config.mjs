@@ -42,7 +42,6 @@ export default [
       "no-else-return": ["error", { allowElseIf: false }],
       "no-useless-return": "error",
       "consistent-this": ["error", "self"],
-      "max-depth": ["error", 4],
       "no-alert": "error",
       "no-array-constructor": "error",
       "no-bitwise": "error",

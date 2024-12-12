@@ -20,6 +20,7 @@ process_files() {
 
       if [[ ! -f "$OUTPUT" ]]; then
         # Run ffmpeg command
+        echo "Processing $FILE"
         ffmpeg -i "$FILE" -vf scale=1280:720 -c:v libx264 -crf 28 -preset medium -c:a aac -threads $NUM_THREADS "$OUTPUT"
         # Check if ffmpeg command was successful
         if [[ $? -eq 0 ]]; then
@@ -33,9 +34,4 @@ process_files() {
   done
 }
 
-# Infinite loop to run the process every 20 minutes
-while true; do
-  process_files
-  echo "Waiting..."
-  sleep $INTERVAL
-done
+process_files

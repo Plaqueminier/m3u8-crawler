@@ -9,6 +9,6 @@
     "moduleResolution": "node", // Use Node.js style module resolution
     "forceConsistentCasingInFileNames": true // Ensure that casing is consistent
   },
-  "include": ["src"], // Include all TypeScript files in the src directory
+  "include": ["src", "scripts/updateR2ContentTypes.ts"], // Include all TypeScript files in the src directory
   "exclude": ["node_modules"] // Exclude the node_modules directory
 }
