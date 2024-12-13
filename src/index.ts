@@ -40,32 +40,38 @@ class Crawler {
   ): Promise<void> => {
     if (request.url().endsWith(".ts")) {
       const url = request.url();
-      const response = await fetch(request.url());
-      const buffer = Buffer.from(await response.arrayBuffer());
-      if (buffer.byteLength === 0) {
-        request.continue();
-        return;
+      try {
+        const response = await fetch(request.url());
+        const buffer = Buffer.from(await response.arrayBuffer());
+        if (buffer.byteLength === 0) {
+          request.continue();
+          return;
+        }
+        const urlPath =
+          `${formatDate(new Date())}${new URL(request.url()).pathname
+            .split("/")
+            .pop()}` || "error";
+        const filePath = path.join(inputDirectory, urlPath);
+
+        const fileNumber = Number(
+          url.slice(url.lastIndexOf("_") + 1, url.lastIndexOf("."))
+        );
+
+        if (fileNumbers.has(fileNumber)) {
+          request.continue();
+          return;
+        }
+
+        fs.mkdirSync(path.dirname(filePath), { recursive: true });
+        fs.writeFileSync(filePath, buffer);
+
+        fileNumbers.add(fileNumber);
+        this.HAD_NEW_REQUEST[index] = true;
+      } catch (error) {
+        logger.error("An error occurred while processing the request:", {
+          metadata: { error },
+        });
       }
-      const urlPath =
-        `${formatDate(new Date())}${new URL(request.url()).pathname
-          .split("/")
-          .pop()}` || "error";
-      const filePath = path.join(inputDirectory, urlPath);
-
-      const fileNumber = Number(
-        url.slice(url.lastIndexOf("_") + 1, url.lastIndexOf("."))
-      );
-
-      if (fileNumbers.has(fileNumber)) {
-        request.continue();
-        return;
-      }
-
-      fs.mkdirSync(path.dirname(filePath), { recursive: true });
-      fs.writeFileSync(filePath, buffer);
-
-      fileNumbers.add(fileNumber);
-      this.HAD_NEW_REQUEST[index] = true;
     }
     request.continue();
   };
@@ -131,7 +137,9 @@ class Crawler {
     const username = await findPerson(index + this.offset);
     if (username !== this.currentUsernames[index]) {
       if (!username) {
-        logger.warn("No username found, retrying in 5min...", { index: index + this.offset });
+        logger.warn("No username found, retrying in 5min...", {
+          index: index + this.offset,
+        });
         return this.currentInputDirectories[index];
       }
       let inputDirectory = `${username}-${formatDate(new Date())}`;
@@ -175,7 +183,9 @@ class Crawler {
       await page.bringToFront();
       await setTimeout(5000);
     } catch {
-      logger.warn("Error while bringing tab to front", { index: index + this.offset });
+      logger.warn("Error while bringing tab to front", {
+        index: index + this.offset,
+      });
     }
 
     logger.info("Current downloads", {
