@@ -1,4 +1,4 @@
-import { execPromise, formatDate } from "./utils";
+import { execPromise } from "./utils";
 import path from "path";
 import fs from "fs";
 import logger from "./logger";
@@ -7,10 +7,9 @@ export const runFFmpeg = async (
   fileListPath: string,
   outputFile: string
 ): Promise<string> => {
-  const fileName = `${outputFile}-${formatDate(new Date())}.ts`;
-  const concatCommand = `ffmpeg -loglevel error -f concat -safe 0 -i "${fileListPath}" -c copy -threads 1 "${fileName}"`;
+  const concatCommand = `ffmpeg -loglevel error -f concat -safe 0 -i "${fileListPath}" -c copy -threads 1 "${outputFile}"`;
   await execPromise(concatCommand);
-  return fileName;
+  return outputFile;
 };
 
 export const deleteTmpFiles = (

@@ -86,13 +86,14 @@ class Crawler {
       logger.info("Starting ffmpeg...", {
         metadata: { inputDirectory, outputFile },
       });
+      const outputFileName = `${outputFile}-${formatDate(new Date())}.ts`;
+      const sourcePath = path.join(outputFileName);
+      const destinationPath = path.join("videos", outputFileName);
       try {
-        const realFileName = await runFFmpeg(fileListPath, outputFile);
+        await runFFmpeg(fileListPath, outputFileName);
         logger.info("ts file created successfully", {
-          metadata: { outputFile },
+          metadata: { outputFileName },
         });
-        const sourcePath = path.join(realFileName);
-        const destinationPath = path.join("videos", realFileName);
         logger.info("Moving file to videos folder...", {
           metadata: { sourcePath, destinationPath },
         });
@@ -102,6 +103,19 @@ class Crawler {
         logger.error("An error occurred while concatenating the files:", {
           metadata: { error },
         });
+
+        if (fs.existsSync(sourcePath)) {
+          logger.info(
+            "Destination file already exists, considering as success and moving it to videos folder",
+            {
+              metadata: { sourcePath, destinationPath },
+            }
+          );
+          fs.renameSync(sourcePath, destinationPath);
+          deleteTmpFiles(fileListPath, inputDirectory);
+          return;
+        }
+
         if (attempt < this.MAX_ATTEMPTS) {
           logger.info("Retrying...");
           return this.concatVideos(

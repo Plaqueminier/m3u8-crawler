@@ -83,10 +83,10 @@ class DatabaseHandler:
 
             cursor.execute(
                 """
-                SELECT id, key
+                SELECT id, key, LENGTH(prediction) - LENGTH(REPLACE(prediction, '1', '')) as quality
                 FROM videos
-                WHERE predictedAt < '2024-12-09 00:00:00'
-                ORDER BY id DESC
+                WHERE predictedAt < '2024-12-18 06:05:00'
+                ORDER BY quality DESC, id DESC
                 LIMIT 1
             """,
             )
