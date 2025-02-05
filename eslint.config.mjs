@@ -99,5 +99,6 @@ export default [
       "no-restricted-modules": ["error", "fs", "cluster"],
       "@typescript-eslint/explicit-function-return-type": ["error"],
     },
+    extends: ["prettier"],
   },
 ];
