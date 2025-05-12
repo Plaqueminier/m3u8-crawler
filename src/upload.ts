@@ -88,6 +88,7 @@ async function uploadFile(filePath: string): Promise<void> {
     process.exit();
   } catch (err) {
     logger.error("Error uploading file:", { metadata: err });
+    process.exit(1);
   }
 }
 

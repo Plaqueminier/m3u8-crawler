@@ -63,7 +63,7 @@ class Crawler {
         }
 
         fs.mkdirSync(path.dirname(filePath), { recursive: true });
-        fs.writeFileSync(filePath, buffer);
+        fs.writeFileSync(filePath, new Uint8Array(buffer));
 
         fileNumbers.add(fileNumber);
         this.HAD_NEW_REQUEST[index] = true;
@@ -171,7 +171,7 @@ class Crawler {
       this.currentInputDirectories[index] = inputDirectory;
       this.currentUsernames[index] = username;
       this.currentPageFilesNumber[index] = new Set();
-      const url = `${process.env.URL}/${username}/`;
+      const url = `${process.env.URL}/` + username;
 
       logger.info("Using directory", {
         index: index + this.offset,
@@ -194,7 +194,6 @@ class Crawler {
     }
 
     try {
-      await page.bringToFront();
       await setTimeout(5000);
     } catch {
       logger.warn("Error while bringing tab to front", {
@@ -212,8 +211,10 @@ class Crawler {
     if (!this.HAD_NEW_REQUEST[index] && !firstTime) {
       logger.info("No new requests, reloading page...", {
         index: index + this.offset,
+        metadata: { pageUrl: page.url() },
       });
-      page.reload();
+      await page.reload();
+      await setTimeout(1000);
       return this.currentInputDirectories[index];
     }
     this.HAD_NEW_REQUEST[index] = false;
