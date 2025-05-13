@@ -12,11 +12,8 @@ import {
 } from "./files";
 import logger from "./logger";
 import { compact, uniq } from "lodash";
-import { PuppeteerExtra } from "puppeteer-extra";
+import puppeteer from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
-
-const puppeteer = new PuppeteerExtra();
-puppeteer.use(StealthPlugin());
 
 class Crawler {
   HAD_NEW_REQUEST = [true, true];
@@ -255,6 +252,7 @@ class Crawler {
   };
 
   launch = async (): Promise<void> => {
+    puppeteer.use(StealthPlugin());
     while (true) {
       const browser: Browser = await puppeteer.launch({
         defaultViewport: { width: 1920, height: 1080 },
