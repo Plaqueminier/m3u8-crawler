@@ -1,6 +1,6 @@
 import path from "path";
 import fs from "fs";
-import puppeteer, { Browser, HTTPRequest, Page } from "puppeteer";
+import { Browser, HTTPRequest, Page } from "puppeteer";
 import { findPerson } from "./scraper";
 import { setTimeout } from "timers/promises";
 import { formatDate } from "./utils";
@@ -12,6 +12,11 @@ import {
 } from "./files";
 import logger from "./logger";
 import { compact, uniq } from "lodash";
+import { PuppeteerExtra } from "puppeteer-extra";
+import StealthPlugin from "puppeteer-extra-plugin-stealth";
+
+const puppeteer = new PuppeteerExtra();
+puppeteer.use(StealthPlugin());
 
 class Crawler {
   HAD_NEW_REQUEST = [true, true];
@@ -189,11 +194,27 @@ class Crawler {
         );
       });
 
-      await page.goto(url);
+      let attempts = 0;
+      while (page.url() !== url) {
+        await page.goto(url);
+        await setTimeout(1000);
+        attempts += 1;
+      }
+      logger.info("Navigated to", {
+        index: index + this.offset,
+        metadata: { pageUrl: page.url(), attempts },
+      });
+      await page.screenshot({ path: "photo_navigate.png" });
       firstTime = true;
     }
 
     try {
+      await page.bringToFront();
+      logger.info("Brought tab to front", {
+        index: index + this.offset,
+        metadata: { pageUrl: page.url() },
+      });
+      await page.screenshot({ path: "photo_front.png" });
       await setTimeout(5000);
     } catch {
       logger.warn("Error while bringing tab to front", {
@@ -215,6 +236,18 @@ class Crawler {
       });
       await page.reload();
       await setTimeout(1000);
+      let attempts = 0;
+      const url = `${process.env.URL}/` + username;
+      while (page.url() !== url) {
+        await page.goto(url);
+        await setTimeout(1000);
+        attempts += 1;
+      }
+      logger.info("Navigated to", {
+        index: index + this.offset,
+        metadata: { pageUrl: page.url(), attempts },
+      });
+      await page.screenshot({ path: "photo.png" });
       return this.currentInputDirectories[index];
     }
     this.HAD_NEW_REQUEST[index] = false;

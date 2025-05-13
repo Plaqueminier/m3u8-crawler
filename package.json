@@ -18,6 +18,8 @@
     "dotenv": "^16.4.5",
     "lodash": "^4.17.21",
     "puppeteer": "^24.8.2",
+    "puppeteer-extra": "3.3.6",
+    "puppeteer-extra-plugin-stealth": "2.11.2",
     "replicate": "1.0.1",
     "sqlite": "5.1.1",
     "sqlite3": "5.1.7",
