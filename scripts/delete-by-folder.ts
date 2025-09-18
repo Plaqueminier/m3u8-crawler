@@ -10,44 +10,7 @@ import { DatabaseSync } from "node:sqlite";
 dotenv.config();
 
 // Configure folders to delete - add folder names here
-const TO_DELETE = [
-  "alissgrey",
-  "anabel054",
-  "anna_bri",
-  "baby6_boy9",
-  "babyaylin",
-  "bellacle",
-  "bridget_spring6871",
-  "bunnybonn1e",
-  "catanddickxxx",
-  "cuteelsa_",
-  "emma_lu1",
-  "floret_joy",
-  "funny_to_see_you_here",
-  "galantini",
-  "gigglygianni",
-  "girl_next_door19",
-  "imrealsugar",
-  "ingridblondy94",
-  "kira_0541",
-  "liass_molly",
-  "mishkenel",
-  "miladenver",
-  "n_o_v_a",
-  "oda_assuri",
-  "riskyproject",
-  "selenarae",
-  "sharlin_13",
-  "sweety_rinushka",
-  "telladreamer_",
-  "thatgirl___",
-  "tiffanyhouston_",
-  "venus_in_jeans",
-  "vicidreamm",
-  "victoriahillova",
-  "willow_hendrix",
-  "xxx_leila",
-];
+const TO_DELETE = [];
 
 const s3Client = new S3Client({
   region: "auto",
