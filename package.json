@@ -12,15 +12,13 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.598.0",
     "@aws-sdk/lib-storage": "^3.598.0",
-    "@types/node": "^20.14.2",
+    "@types/node": "^22.0.0",
     "@types/yargs": "^17.0.32",
     "client-s3": "link:@types/aws-sdk/client-s3",
     "dotenv": "^16.4.5",
     "lodash": "^4.17.21",
     "puppeteer": "^24.8.2",
     "replicate": "1.0.1",
-    "sqlite": "5.1.1",
-    "sqlite3": "5.1.7",
     "typescript": "^5.4.5",
     "winston": "^3.13.0",
     "winston-loki": "^6.1.2"

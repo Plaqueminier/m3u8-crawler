@@ -5,8 +5,7 @@ import dotenv from "dotenv";
 import { Upload } from "@aws-sdk/lib-storage";
 import path from "path";
 import { processVideo } from "./preview";
-import { open } from "sqlite";
-import sqlite3 from "sqlite3";
+import { DatabaseSync } from "node:sqlite";
 dotenv.config();
 
 // Load environment variables
@@ -26,17 +25,17 @@ const s3Client = new S3Client({
   },
 });
 
-async function uploadFileInDb(name: string, fileName: string, size: number): Promise<void> {
-  const db = await open({
-    filename: process.env.DATABASE_PATH!,
-    driver: sqlite3.Database,
-  });
+function uploadFileInDb(name: string, fileName: string, size: number): void {
+  const db = new DatabaseSync(process.env.DATABASE_PATH!);
 
-  const response = await db.run(
-    "INSERT INTO videos (name, key, size, lastModified) VALUES (?, ?, ?, ?)",
-    [name, fileName, size, new Date()]
-  );
+  const response = db
+    .prepare(
+      "INSERT INTO videos (name, key, size, lastModified) VALUES (?, ?, ?, ?)"
+    )
+    .run(name, fileName, size, new Date().toISOString());
+
   logger.info("File uploaded in db", { metadata: response });
+  db.close();
 }
 
 async function uploadFile(filePath: string): Promise<void> {
@@ -83,7 +82,7 @@ async function uploadFile(filePath: string): Promise<void> {
       },
     });
     fileStream.close();
-    await uploadFileInDb(userName, fileName, fileStream.bytesRead);
+    uploadFileInDb(userName, fileName, fileStream.bytesRead);
     await processVideo(fileName);
     process.exit();
   } catch (err) {
