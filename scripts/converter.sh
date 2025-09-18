@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Directory containing the .ts files
-DIRECTORY="/root/m3u8-crawler/videos/"
+DIRECTORY="/home/plqmnr/m3u8-crawler/videos/"
 
 # Interval in seconds (20 minutes)
 INTERVAL=600

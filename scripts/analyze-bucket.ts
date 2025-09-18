@@ -6,12 +6,11 @@ import {
 import * as dotenv from "dotenv";
 import * as fs from "fs/promises";
 import * as path from "path";
-import sqlite3 from "sqlite3";
-import { open } from "sqlite";
+import { DatabaseSync } from "node:sqlite";
 
-const DO_NOT_DELETE = [];
+const DO_NOT_DELETE: string[] = [];
 
-const TO_DELETE = [];
+const TO_DELETE: string[] = [];
 
 dotenv.config();
 
@@ -104,10 +103,7 @@ async function analyzeBucket(): Promise<void> {
   let totalFiles = 0;
 
   // Open database connection
-  const db = await open({
-    filename: "../videos.db",
-    driver: sqlite3.Database,
-  });
+  const db = new DatabaseSync("../videos.db");
 
   try {
     // eslint-disable-next-line no-console
@@ -288,14 +284,7 @@ async function analyzeBucket(): Promise<void> {
 
     for (const [folder, stats] of Object.entries(folderStats)) {
       // Get all videos in this folder
-      const dbStats = await db.get<{
-        seen_count: number;
-        favorite_count: number;
-        last_seen: string | null;
-        avg_prediction: number;
-        avg_favorite_prediction: number;
-      }>(
-        `SELECT 
+      const stmt = db.prepare(`SELECT 
           COUNT(CASE WHEN seen IS NOT NULL THEN 1 END) as seen_count,
           COUNT(CASE WHEN favorite = 1 THEN 1 END) as favorite_count,
           MAX(seen) as last_seen,
@@ -309,9 +298,16 @@ async function analyzeBucket(): Promise<void> {
             END
           ) as avg_favorite_prediction
         FROM videos 
-        WHERE key LIKE ?`,
-        `${folder}/%`
-      );
+        WHERE key LIKE ?`);
+
+      const rawDbStats = stmt.get(`${folder}/%`);
+      const dbStats = rawDbStats ? {
+        seen_count: rawDbStats.seen_count as number,
+        favorite_count: rawDbStats.favorite_count as number,
+        last_seen: rawDbStats.last_seen as string | null,
+        avg_prediction: rawDbStats.avg_prediction as number,
+        avg_favorite_prediction: rawDbStats.avg_favorite_prediction as number
+      } : undefined;
 
       if (dbStats) {
         stats.dbStats.totalSeen = dbStats.seen_count;
@@ -352,20 +348,18 @@ async function analyzeBucket(): Promise<void> {
           `    Average Size per Preview: ${formatBytes(
             stats.previewStats.previewFolders.length
               ? stats.previewStats.totalSize /
-                  stats.previewStats.previewFolders.length
+              stats.previewStats.previewFolders.length
               : 0
           )}`,
         ].join("\n");
 
         const dbStatsStr = [
           "  Database Statistics:",
-          `    Videos Watched: ${stats.dbStats.totalSeen}/${
-            stats.fileCount
+          `    Videos Watched: ${stats.dbStats.totalSeen}/${stats.fileCount
           } (${Math.round(
             (stats.dbStats.totalSeen / stats.fileCount) * 100
           )}%)`,
-          `    Favorite Videos: ${stats.dbStats.totalFavorites}/${
-            stats.fileCount
+          `    Favorite Videos: ${stats.dbStats.totalFavorites}/${stats.fileCount
           } (${Math.round(
             (stats.dbStats.totalFavorites / stats.fileCount) * 100
           )}%)`,
@@ -404,28 +398,41 @@ async function analyzeBucket(): Promise<void> {
       previewSize: number;
     }
 
-    const zeroPredictionFiles = await db.all<ZeroPredictionFile[]>(
-      `SELECT key, prediction 
+    // Build the query conditions safely
+    const doNotDeleteConditions = DO_NOT_DELETE.length > 0
+      ? DO_NOT_DELETE.map((folder) => `key NOT LIKE '${folder}/%'`).join(" AND ")
+      : "1=1"; // Always true if no folders to exclude
+
+    const toDeleteConditions = TO_DELETE.length > 0
+      ? TO_DELETE.map((folder) => `key LIKE '${folder}/%'`).join(" OR ")
+      : "1=0"; // Always false if no folders to delete
+
+    const zeroPredictionStmt = db.prepare(`SELECT key, prediction 
        FROM videos 
        WHERE (
          (
            LENGTH(prediction) - LENGTH(REPLACE(prediction, '1', '')) < 10
            AND key NOT LIKE 'previews/%'
            AND favorite = 0
-           AND ${DO_NOT_DELETE.map((folder) => `key NOT LIKE '${folder}/%'`).join(" AND ")}
+           AND ${doNotDeleteConditions}
          )
          OR (
-           ${TO_DELETE.map((folder) => `key LIKE '${folder}/%'`).join(" OR ")}
+           ${toDeleteConditions}
            AND favorite = 0
          )
-       )`
-    );
+       )`);
+
+    const rawZeroPredictionResults = zeroPredictionStmt.all();
+    const zeroPredictionFiles: ZeroPredictionFile[] = rawZeroPredictionResults.map(row => ({
+      key: row.key as string,
+      prediction: row.prediction as string
+    }));
 
     let totalPotentialSavings = 0;
     let totalPreviewSavings = 0;
     const zeroPredictionStats: ZeroPredictionStat[] = [];
 
-    for (const file of zeroPredictionFiles || []) {
+    for (const file of zeroPredictionFiles) {
       const folderPath = path.dirname(file.key);
       const fileKey = extractKeyFromPath(file.key);
 
@@ -469,7 +476,7 @@ async function analyzeBucket(): Promise<void> {
       "  - All files from protected folders: " + DO_NOT_DELETE.join(", "),
       "  - All favorite files",
       "",
-      `Total Files to Delete: ${zeroPredictionFiles?.length || 0}`,
+      `Total Files to Delete: ${zeroPredictionFiles.length}`,
       `Main Files Size: ${formatBytes(totalPotentialSavings)}`,
       `Preview Files Size: ${formatBytes(totalPreviewSavings)}`,
       `Total Potential Space Savings: ${formatBytes(
@@ -500,7 +507,7 @@ async function analyzeBucket(): Promise<void> {
     console.error("Error analyzing bucket:", error);
     throw error;
   } finally {
-    await db.close();
+    db.close();
   }
 }
 
